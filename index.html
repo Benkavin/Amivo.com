@@ -1027,7 +1027,15 @@ $("notifyBtn").onclick = async () => {
       return;
     }
     if (!swReg) await registerSW();
-    const reg = await navigator.serviceWorker.ready;
+    // serviceWorker.ready never settles if sw.js failed to load, so don't wait on it forever.
+    const reg = swReg && await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise(res => setTimeout(() => res(null), 10000))
+    ]);
+    if (!reg) {
+      setNotifyStatus("Notifications couldn't start on this device. Please reload amivo and try again.");
+      return;
+    }
     swReg = reg;
     const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({
       userVisibleOnly: true,
@@ -1044,8 +1052,8 @@ $("notifyBtn").onclick = async () => {
 
 $("previewBtn").onclick = async () => {
   try {
-    const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification("Good morning", {
+    const reg = swReg || await navigator.serviceWorker.ready;
+    await reg.showNotification(currentPeriod === "evening" ? "Good evening" : currentPeriod === "afternoon" ? "Good afternoon" : "Good morning", {
       body: $("message").textContent,
       icon: "icons/icon-192.png",
       tag: "amivo-preview"
