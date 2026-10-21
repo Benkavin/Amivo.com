@@ -11,6 +11,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="amivo">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="A little encouragement, every day. A fresh message each morning and a gentle question each evening.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="amivo">
+<meta property="og:title" content="amivo — a little encouragement, every day">
+<meta property="og:description" content="A fresh message each morning and a gentle question each evening.">
+<meta property="og:url" content="https://www.amivo.ca/">
+<meta property="og:image" content="https://www.amivo.ca/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <style>
 :root {
   --bg:#f8f6ef;
@@ -180,6 +190,33 @@ textarea { min-height:120px;resize:vertical;line-height:1.6; }
 .history .entry-body p { margin:6px 0;white-space:pre-wrap; }
 .history .entry-body b { color:var(--ink);font-weight:600; }
 .empty { font-size:14px;color:var(--soft);line-height:1.6; }
+.sheet-backdrop {
+  position:fixed;inset:0;background:rgba(20,32,27,.45);
+  display:flex;align-items:flex-end;justify-content:center;z-index:20;
+  animation:fadein .2s ease;
+}
+.sheet {
+  width:min(470px,100%);max-height:92dvh;overflow:auto;
+  background:var(--bg);border-radius:24px 24px 0 0;
+  padding:22px 20px max(22px,env(safe-area-inset-bottom));
+  box-shadow:0 -10px 40px rgba(0,0,0,.15);
+}
+.sheet-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:14px; }
+.sheet-head h2 { font-size:18px;margin:0; }
+.sheet-close { border:0;background:none;color:var(--soft);font-size:26px;line-height:1;padding:4px 8px; }
+.share-preview {
+  width:min(58%,240px);margin:0 auto;aspect-ratio:4/5;border-radius:16px;border:1px solid var(--line);
+  display:block;object-fit:cover;background:var(--card);
+}
+.share-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px; }
+.share-grid a, .share-grid button {
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  min-height:48px;padding:10px 6px;border-radius:13px;
+  border:1px solid var(--line);background:var(--field);color:var(--ink);
+  font-size:14px;font-weight:600;text-decoration:none;
+}
+.sheet .btn.full { margin-top:14px; }
+.sheet .hint { margin:12px 0 0; }
 .switch-row {
   display:flex;justify-content:space-between;align-items:center;
   margin:22px 0 8px;
@@ -339,6 +376,20 @@ input[type="time"]:disabled { opacity:.45; }
 </nav>
 </main>
 
+<div class="sheet-backdrop" id="shareSheet" hidden role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 id="shareTitle">Share today's message</h2>
+      <button type="button" class="sheet-close" id="shareClose" aria-label="Close">×</button>
+    </div>
+    <img class="share-preview" id="sharePreview" alt="Today's amivo message as an image">
+    <button type="button" class="btn full" id="shareImage">Share image</button>
+    <div class="share-grid" id="shareLinks"></div>
+    <p class="hint" id="shareHint">For Instagram, TikTok or Stories, tap <b>Share image</b> (or <b>Save image</b>) and post the picture from the app.</p>
+    <p class="status" id="sheetStatus" aria-live="polite"></p>
+  </div>
+</div>
+
 <script>
 /* ---------- Setup: fill these in after the backend is ready (see SETUP.md) ---------- */
 const CONFIG = {
@@ -497,19 +548,166 @@ function renderStreak() {
 function setShareStatus(msg) { $("shareStatus").textContent = msg; }
 
 /* ---------- Share ---------- */
-$("share").onclick = async () => {
-  const text = `"${$("message").textContent}" — from amivo`;
-  if (navigator.share) {
-    try { await navigator.share({ text }); } catch (e) {}
-    return;
+const SHARE_URL = "https://www.amivo.ca/";
+
+function shareText() {
+  return `“${$("message").textContent.trim()}”\n\nA little encouragement from amivo`;
+}
+
+// Draws today's message as a 1080×1350 image (the size Instagram and most feeds prefer).
+function wrapLines(ctx, text, maxWidth) {
+  const words = text.split(/\s+/), lines = [];
+  let line = "";
+  for (const w of words) {
+    const test = line ? line + " " + w : w;
+    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w; }
+    else line = test;
   }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function drawShareImage() {
+  const W = 1080, H = 1350, pad = 110;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+
+  ctx.fillStyle = "#f8f6ef"; ctx.fillRect(0, 0, W, H);
+  // soft card
+  ctx.fillStyle = "#fffefa";
+  ctx.strokeStyle = "#e3e6dd"; ctx.lineWidth = 3;
+  const r = 48, x = 60, y = 60, w = W - 120, h = H - 120;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  // brand
+  ctx.fillStyle = "#274b3e";
+  ctx.font = "600 64px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("amivo", pad, 210);
+  ctx.fillStyle = "#8b967f";
+  ctx.font = "500 30px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  const label = (STYLE_NAMES[cat] || "").toUpperCase();
+  ctx.fillText(label, pad, 270);
+
+  // message, sized to fit
+  const msg = `“${$("message").textContent.trim()}”`;
+  const maxW = W - pad * 2;
+  let size = 78, lines;
+  do {
+    ctx.font = `${size}px Georgia, 'Times New Roman', serif`;
+    lines = wrapLines(ctx, msg, maxW);
+    size -= 4;
+  } while (lines.length * size * 1.4 > 700 && size > 40);
+  size += 4;
+  const lh = size * 1.4;
+  let ty = 360 + (760 - lines.length * lh) / 2 + size;
+  ctx.fillStyle = "#274b3e";
+  for (const l of lines) { ctx.fillText(l, pad, ty); ty += lh; }
+
+  // footer
+  ctx.fillStyle = "#c8a56b"; ctx.fillRect(pad, H - 250, 90, 6);
+  ctx.fillStyle = "#6c7e72";
+  ctx.font = "500 34px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  ctx.fillText("A little encouragement, every day", pad, H - 180);
+  ctx.fillStyle = "#274b3e";
+  ctx.font = "600 34px -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  ctx.fillText("amivo.ca", pad, H - 128);
+  return c;
+}
+
+let shareBlob = null;
+
+function openShareSheet() {
+  const canvas = drawShareImage();
+  $("sharePreview").src = canvas.toDataURL("image/png");
+  shareBlob = null;
+  canvas.toBlob(b => { shareBlob = b; }, "image/png");
+
+  const text = shareText();
+  const t = encodeURIComponent(text), u = encodeURIComponent(SHARE_URL);
+  const tu = encodeURIComponent(text + "\n" + SHARE_URL);
+  const links = [
+    ["WhatsApp", `https://wa.me/?text=${tu}`],
+    ["Facebook", `https://www.facebook.com/sharer/sharer.php?u=${u}`],
+    ["X", `https://x.com/intent/post?text=${t}&url=${u}`],
+    ["Threads", `https://www.threads.net/intent/post?text=${tu}`],
+    ["LinkedIn", `https://www.linkedin.com/sharing/share-offsite/?url=${u}`],
+    ["Telegram", `https://t.me/share/url?url=${u}&text=${t}`],
+    ["Messages", `sms:?&body=${tu}`],
+    ["Email", `mailto:?subject=${encodeURIComponent("A little encouragement for you")}&body=${tu}`],
+  ];
+  const grid = $("shareLinks");
+  grid.innerHTML = "";
+  for (const [name, href] of links) {
+    const a = document.createElement("a");
+    a.href = href; a.textContent = name;
+    if (!href.startsWith("sms:") && !href.startsWith("mailto:")) { a.target = "_blank"; a.rel = "noopener"; }
+    grid.appendChild(a);
+  }
+  const save = document.createElement("button");
+  save.type = "button"; save.textContent = "Save image"; save.onclick = saveImage;
+  const copy = document.createElement("button");
+  copy.type = "button"; copy.textContent = "Copy text"; copy.onclick = copyText;
+  grid.append(save, copy);
+
+  // Phones with a share sheet get one button that reaches every installed app.
+  $("shareImage").hidden = !navigator.share;
+  $("sheetStatus").textContent = "";
+  $("shareSheet").hidden = false;
+  document.body.style.overflow = "hidden";
+  $("shareClose").focus();
+}
+
+function closeShareSheet() {
+  $("shareSheet").hidden = true;
+  document.body.style.overflow = "";
+  $("share").focus();
+}
+
+async function imageFile() {
+  if (!shareBlob) await new Promise(res => drawShareImage().toBlob(b => { shareBlob = b; res(); }, "image/png"));
+  return new File([shareBlob], `amivo-${dateKey()}.png`, { type: "image/png" });
+}
+
+$("shareImage").onclick = async () => {
   try {
-    await navigator.clipboard.writeText(text);
-    setShareStatus("Copied. Paste it anywhere to share.");
+    const file = await imageFile();
+    const data = { files: [file], text: shareText() + "\n" + SHARE_URL };
+    if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share(data);
+    else await navigator.share({ text: shareText(), url: SHARE_URL });
+    $("sheetStatus").textContent = "";
   } catch (e) {
-    setShareStatus("Sharing isn't available on this device.");
+    if (e && e.name !== "AbortError") $("sheetStatus").textContent = "Couldn't open sharing here. Try Save image instead.";
   }
 };
+
+async function saveImage() {
+  const file = await imageFile();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file);
+  a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  $("sheetStatus").textContent = "Image saved. Post it from Instagram, TikTok or any app.";
+}
+
+async function copyText() {
+  try {
+    await navigator.clipboard.writeText(shareText() + "\n" + SHARE_URL);
+    $("sheetStatus").textContent = "Copied. Paste it anywhere.";
+  } catch (e) {
+    $("sheetStatus").textContent = "Couldn't copy on this device.";
+  }
+}
+
+$("share").onclick = openShareSheet;
+$("shareClose").onclick = closeShareSheet;
+$("shareSheet").addEventListener("click", e => { if (e.target.id === "shareSheet") closeShareSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("shareSheet").hidden) closeShareSheet(); });
 
 /* ---------- Journal ---------- */
 function renderFeelings() {
