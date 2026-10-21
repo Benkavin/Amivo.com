@@ -525,7 +525,9 @@ async function loadDailyMessage(key, style) {
     const res = await fetch(url);
     if (!res.ok) return;
     const d = await res.json();
-    if (d.fresh) store.set(cacheKey, JSON.stringify({ message: d.message, prompt: d.prompt }));
+    // Only use it if it's a newly written message; otherwise keep the built-in year of messages.
+    if (!d.fresh) return;
+    store.set(cacheKey, JSON.stringify({ message: d.message, prompt: d.prompt }));
     apply(d);
   } catch (e) { /* offline: keep what's showing */ }
 }
