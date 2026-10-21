@@ -49,6 +49,7 @@
   }
 }
 * { box-sizing:border-box; }
+[hidden] { display:none !important; }
 body {
   margin:0;
   background:var(--bg);
@@ -94,6 +95,7 @@ button { cursor:pointer; }
   line-height:1.48;margin:25px 0 27px;
 }
 .actions { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+.actions.single { grid-template-columns:1fr; }
 .btn {
   border:1px solid var(--ink);border-radius:14px;
   padding:15px 12px;background:var(--ink);
@@ -230,14 +232,17 @@ input[type="time"]:disabled { opacity:.45; }
     </div>
     <p class="quote" id="message"></p>
 
-    <span class="label" id="voiceLabel">Listening voice</span>
-    <div class="voice-picker" role="group" aria-labelledby="voiceLabel">
-      <button type="button" id="femaleVoice" aria-pressed="true">Warm voice</button>
-      <button type="button" id="maleVoice" aria-pressed="false">Calm voice</button>
+    <!-- Shown only when a real recording exists for today's message (see audio/ in SETUP.md) -->
+    <div id="voiceControls" hidden>
+      <span class="label" id="voiceLabel">Listening voice</span>
+      <div class="voice-picker" role="group" aria-labelledby="voiceLabel">
+        <button type="button" id="femaleVoice" aria-pressed="true">Warm voice</button>
+        <button type="button" id="maleVoice" aria-pressed="false">Calm voice</button>
+      </div>
     </div>
 
-    <div class="actions">
-      <button type="button" class="btn" id="listen">▶ Listen</button>
+    <div class="actions single" id="cardActions">
+      <button type="button" class="btn" id="listen" hidden>▶ Listen</button>
       <button type="button" class="btn secondary" id="share">Share</button>
     </div>
     <div class="status" id="audioStatus" aria-live="polite"></div>
@@ -328,11 +333,11 @@ input[type="time"]:disabled { opacity:.45; }
     <h2>Membership preview</h2>
     <div class="plan">
       <strong>Essential · CAD $2.99/month</strong>
-      One daily message with Listen and Share.
+      One daily morning message.
     </div>
     <div class="plan">
       <strong>Premium · CAD $4.99/month</strong>
-      Morning and evening messages, audio, and private journaling with history.
+      Morning and evening messages, private journaling with history, and audio as it's added.
     </div>
     <p class="hint">Proposed 30-day free trial. No billing or trial starts in this demo.</p>
   </div>
@@ -354,8 +359,8 @@ input[type="time"]:disabled { opacity:.45; }
 <script>
 /* ---------- Setup: fill these in after the backend is ready (see SETUP.md) ---------- */
 const CONFIG = {
-  API_URL: "",          // e.g. "https://YOUR-PROJECT.supabase.co/functions/v1/subscribe"
-  VAPID_PUBLIC_KEY: ""  // the PUBLIC key only. Never put the private key here.
+  API_URL: "https://jeyotgsaoizqdnupsbcg.supabase.co/functions/v1/subscribe",
+  VAPID_PUBLIC_KEY: ""  // optional: fetched from API_URL automatically when left empty
 };
 
 /* ---------- Content (loaded from messages.json, shared with the notification sender) ---------- */
@@ -462,6 +467,7 @@ function renderHome() {
   const hasToday = !!readEntry(dateKey(now));
   $("reflectBtn").textContent = hasToday ? "✓ View today's reflection" : "Take a moment to reflect →";
   renderStreak();
+  checkRecordings();
 }
 
 function renderStreak() {
@@ -495,7 +501,6 @@ function setPlaying(on) {
 function stopAudio() {
   audio.pause();
   try { audio.currentTime = 0; } catch (e) {}
-  if ("speechSynthesis" in window) speechSynthesis.cancel();
   setPlaying(false);
 }
 
@@ -513,37 +518,35 @@ $("femaleVoice").onclick = () => chooseVoice("female");
 $("maleVoice").onclick = () => chooseVoice("male");
 
 // Recorded files: audio/{style}-{messageNumber}-{voice}.mp3, e.g. audio/general-1-female.mp3
-function audioPath() {
-  return `audio/${cat}-${currentMessageIndex + 1}-${selectedVoice}.mp3`;
+function audioPath(voice = selectedVoice) {
+  return `audio/${cat}-${currentMessageIndex + 1}-${voice}.mp3`;
 }
 
-function pickDeviceVoice() {
-  const voices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
-  if (!voices.length) return null;
-  const femaleRe = /female|samantha|victoria|karen|moira|tessa|zira|aria|jenny|serena|fiona|allison|ava|susan/i;
-  const maleRe = /\bmale\b|daniel|alex|fred|david|guy|arthur|oliver|aaron|tom|rishi/i;
-  const match = selectedVoice === "female"
-    ? voices.find(v => femaleRe.test(v.name))
-    : voices.find(v => maleRe.test(v.name) && !/female/i.test(v.name));
-  return match || voices[0];
+async function recordingExists(path) {
+  try {
+    const res = await fetch(path, { method: "HEAD", cache: "no-cache" });
+    return res.ok && !/text\/html/i.test(res.headers.get("content-type") || "");
+  } catch (e) { return false; }
 }
 
-function speakWithDevice(text) {
-  if (!("speechSynthesis" in window)) {
-    setPlaying(false);
-    setAudioStatus("Audio is coming soon on this device.");
-    return;
+// Only show Listen (and the voice choice) when real recordings exist for today's message.
+let recordingCheck = 0;
+async function checkRecordings() {
+  const token = ++recordingCheck;
+  const [female, male] = await Promise.all([
+    recordingExists(audioPath("female")),
+    recordingExists(audioPath("male"))
+  ]);
+  if (token !== recordingCheck) return; // a newer check started
+  const any = female || male;
+  if (any && !(selectedVoice === "female" ? female : male)) {
+    selectedVoice = female ? "female" : "male";
+    updateVoiceButtons();
   }
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  const v = pickDeviceVoice();
-  if (v) u.voice = v;
-  u.rate = 0.9;
-  u.pitch = selectedVoice === "female" ? 1.05 : 0.9;
-  u.onend = () => { if (playing) { setPlaying(false); setAudioStatus("Finished listening."); } };
-  u.onerror = () => { setPlaying(false); };
-  speechSynthesis.speak(u);
-  setAudioStatus("Playing with your device's voice.");
+  $("listen").hidden = !any;
+  $("cardActions").classList.toggle("single", !any);
+  $("voiceControls").hidden = !(female && male);
+  if (!any) stopAudio();
 }
 
 $("listen").onclick = async () => {
@@ -554,15 +557,13 @@ $("listen").onclick = async () => {
   audio.src = audioPath();
   try {
     await audio.play();
-    setAudioStatus("Playing your encouragement aloud.");
+    setAudioStatus("");
   } catch (e) {
-    // No recording yet (or blocked): fall back to the device's built-in voice.
-    if (playing) speakWithDevice($("message").textContent);
+    setPlaying(false);
+    setAudioStatus("This recording couldn't play right now. Please try again.");
   }
 };
-audio.onended = () => { setPlaying(false); setAudioStatus("Finished listening."); };
-
-if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => {};
+audio.onended = () => { setPlaying(false); setAudioStatus(""); };
 
 /* ---------- Share ---------- */
 $("share").onclick = async () => {
@@ -762,7 +763,15 @@ const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-const backendReady = () => !!(CONFIG.API_URL && CONFIG.VAPID_PUBLIC_KEY);
+const backendReady = () => !!CONFIG.API_URL;
+
+async function publicKey() {
+  if (CONFIG.VAPID_PUBLIC_KEY) return CONFIG.VAPID_PUBLIC_KEY;
+  const res = await fetch(CONFIG.API_URL);
+  if (!res.ok) throw new Error("No public key");
+  CONFIG.VAPID_PUBLIC_KEY = (await res.json()).publicKey;
+  return CONFIG.VAPID_PUBLIC_KEY;
+}
 
 let swReg = null;
 
@@ -892,7 +901,7 @@ $("notifyBtn").onclick = async () => {
     swReg = reg;
     const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlB64ToUint8Array(CONFIG.VAPID_PUBLIC_KEY)
+      applicationServerKey: urlB64ToUint8Array(await publicKey())
     });
     await api(schedulePayload(sub));
     setNotifyStatus("You're all set. " + describeSchedule());
