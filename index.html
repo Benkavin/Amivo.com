@@ -1,40 +1,758 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f8f6ef"><title>amivo — a little encouragement, every day</title><style>
-:root{--bg:#f8f6ef;--ink:#274b3e;--soft:#6c7e72;--line:#e3e6dd;--card:#fffefa;--gold:#c8a56b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,select,textarea,input{font:inherit}button{cursor:pointer}.app{max-width:470px;min-height:100dvh;margin:auto;position:relative;padding:30px 23px 100px}.brand{font-size:32px;font-weight:650;letter-spacing:-2px}.top{display:flex;align-items:center;justify-content:space-between}.tag{font-size:11px;letter-spacing:1.7px;text-transform:uppercase;color:var(--soft)}.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#8b967f;margin-top:42px}.headline{font-family:Georgia,serif;font-size:39px;line-height:1.12;letter-spacing:-1.2px;font-weight:normal;margin:13px 0 13px}.sub{font-size:15px;line-height:1.7;color:var(--soft)}.card{background:var(--card);border:1px solid var(--line);border-radius:23px;padding:25px;margin-top:25px;box-shadow:0 9px 30px #274b3e08}.pill{display:inline-block;background:#edf2e8;padding:8px 12px;border-radius:50px;color:#56745d;font-size:12px}.quote{font-family:Georgia,serif;font-size:26px;line-height:1.48;margin:25px 0 27px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:1px solid var(--ink);border-radius:14px;padding:15px 12px;background:var(--ink);color:white;font-weight:600}.btn.secondary{background:transparent;color:var(--ink)}.btn.small{padding:11px}.section{margin-top:33px}.section h2{font-size:18px;letter-spacing:-.3px}.prompt{border-left:3px solid var(--gold);padding-left:16px;line-height:1.7;color:var(--soft)}.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(470px,100%);display:grid;grid-template-columns:repeat(3,1fr);padding:13px 12px max(15px,env(safe-area-inset-bottom));background:#fffefaf5;border-top:1px solid var(--line);backdrop-filter:blur(12px)}.nav button{border:0;background:none;color:#819086;padding:5px;font-size:13px}.nav button.active{color:var(--ink);font-weight:700}.screen{display:none}.screen.active{display:block}label{display:block;margin:22px 0 8px;font-weight:600;font-size:14px}select,textarea,input{width:100%;border:1px solid #d6ddd3;border-radius:13px;background:white;padding:13px;color:var(--ink)}textarea{min-height:130px;resize:vertical}.hint{font-size:12px;line-height:1.6;color:var(--soft)}.plan{padding:15px;border:1px solid var(--line);border-radius:15px;margin-top:12px}.plan strong{display:block;margin-bottom:5px}.listen-active{position:relative;box-shadow:0 0 0 4px rgba(103,145,113,.13);animation:softpulse 2s ease-in-out infinite}@keyframes softpulse{0%,100%{box-shadow:0 0 0 3px rgba(103,145,113,.10)}50%{box-shadow:0 0 0 9px rgba(103,145,113,.18)}}@media(prefers-reduced-motion:reduce){.listen-active{animation:none}}.status{font-size:13px;color:var(--soft);min-height:20px;margin-top:12px}.footer{margin-top:32px;font-size:12px;color:var(--soft)}@media(min-width:600px){body{background:#e8eee7}.app{background:var(--bg);box-shadow:0 0 55px #274b3e14}}
-</style></head><body><main class="app"><header class="top"><div class="brand">amivo</div><div class="tag">a moment for you</div></header>
-<section id="home" class="screen active"><div class="eyebrow" id="greeting">Your morning moment</div><h1 class="headline" id="welcomeHeadline">A little light<br>for today.</h1><p class="sub">Take what you need. Go at your own pace.</p><div class="card"><span class="pill" id="categoryPill">Everyday encouragement</span><p class="quote" id="message">You don't have to have everything figured out. One thoughtful step today is enough.</p><div class="actions"><button class="btn" id="listen">▶ Listen</button><button class="btn secondary" id="read">Read</button></div><div class="status" id="audioStatus" aria-live="polite"></div></div><div class="section"><h2>Tonight, come back to yourself.</h2><p class="prompt">What was one small thing that made today meaningful?</p><button class="btn secondary small" data-go="journal">Take a moment to reflect →</button></div></section>
-<section id="journal" class="screen"><div class="eyebrow">Your private space</div><h1 class="headline">How was<br>your day?</h1><p class="sub">No perfect answers. Just a moment to reflect.</p><label for="feeling">How are you feeling?</label><select id="feeling"><option>Peaceful</option><option>Hopeful</option><option>Okay</option><option>Tired</option><option>Overwhelmed</option></select><label for="gratitude">What's one thing you're grateful for?</label><textarea id="gratitude" placeholder="Today, I'm grateful for..."></textarea><label for="reflection">Anything else on your mind?</label><textarea id="reflection" placeholder="Write freely..."></textarea><button class="btn" id="save">Save today's reflection</button><p class="status" id="saveStatus" aria-live="polite"></p><p class="hint">Prototype privacy: entries stay in this browser's local storage. This is not secure cloud journaling; avoid entering sensitive information during testing.</p><button class="btn secondary small" id="delete">Delete saved reflection</button></section>
-<section id="settings" class="screen"><div class="eyebrow">Make it yours</div><h1 class="headline">Your kind<br>of encouragement.</h1><label for="category">Choose your message style</label><select id="category"><option value="general">Everyday encouragement</option><option value="affirmation">Positive affirmations</option><option value="gratitude">Gratitude</option><option value="christian">Christian encouragement</option><option value="islamic">Islamic encouragement</option><option value="spiritual">Spiritual reflection</option></select><label for="time">Preferred morning time</label><input id="time" type="time" value="07:00"><p class="hint">This prototype saves your preference but does not send notifications.</p><div class="section"><h2>Membership preview</h2><div class="plan"><strong>Essential · CAD $7.99/month</strong>One daily message with Listen and Read.</div><div class="plan"><strong>Premium · CAD $24.99/month</strong>Morning and evening messages, audio, and private journaling.</div><p class="hint">Proposed 30-day free trial. No billing or trial starts in this demo.</p></div><button class="btn" id="apply">Save preferences</button><p class="status" id="settingsStatus" aria-live="polite"></p></section>
-<nav class="nav" aria-label="Main navigation"><button class="active" data-go="home">⌂ Home</button><button data-go="journal">✎ Journal</button><button data-go="settings">⚙ Settings</button></nav></main><script>
-const messages={general:"You don't have to have everything figured out. One thoughtful step today is enough.",affirmation:"You are allowed to grow at your own pace. Your effort matters, even when progress feels quiet.",gratitude:"There is room for gratitude in an ordinary day. Notice one good thing, however small.",christian:"May God's peace guide your steps today. You can meet this day with hope and kindness.",islamic:"May Allah grant you ease, patience, and gratitude as you move through your day.",spiritual:"May you find stillness within yourself and carry compassion into the world around you."};
-const $=id=>document.getElementById(id);let playing=false;
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));document.querySelectorAll('[data-go]').forEach(b=>b.classList.toggle('active',b.dataset.go===id));window.scrollTo(0,0);if(id!=='home')stop();}
-document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
-function stop(){if('speechSynthesis' in window)window.speechSynthesis.cancel();playing=false;$('listen').classList.remove('listen-active');$('listen').textContent='▶ Listen';}
-$('listen').onclick=()=>{
- if(playing){stop();$('audioStatus').textContent='Playback stopped.';return;}
- if(!('speechSynthesis' in window)){$('audioStatus').textContent='Audio is unavailable in this viewer. Open the HTML file in Safari or Chrome, rather than the file preview.';return;}
- try{
-   window.speechSynthesis.cancel();
-   const u=new SpeechSynthesisUtterance($('message').textContent);
-   u.lang='en-CA';u.rate=.9;u.pitch=1;
-   const voices=window.speechSynthesis.getVoices();
-   const voice=voices.find(v=>v.lang.toLowerCase()==='en-ca')||voices.find(v=>v.lang.toLowerCase().startsWith('en'));
-   if(voice)u.voice=voice;
-   u.onstart=()=>{$('audioStatus').textContent='Playing your encouragement aloud.';};
-   u.onend=()=>{stop();$('audioStatus').textContent='Finished listening.';};
-   u.onerror=e=>{stop();$('audioStatus').textContent='Audio could not start ('+(e.error||'browser restriction')+'). If using an iPhone file preview, open the page in Safari instead.';};
-   playing=true;$('listen').classList.add('listen-active');$('listen').textContent='■ Stop';
-   $('audioStatus').textContent='Starting audio…';
-   window.speechSynthesis.speak(u);
-   setTimeout(()=>{if(playing&&!window.speechSynthesis.speaking&&!window.speechSynthesis.pending){stop();$('audioStatus').textContent='Audio is blocked in this viewer. Try opening the HTML page directly in Safari or Chrome.';}},1800);
- }catch(e){stop();$('audioStatus').textContent='Audio is not supported in this preview. Please open in Safari or Chrome.';}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f8f6ef">
+<title>amivo — a little encouragement, every day</title>
+<style>
+:root {
+  --bg:#f8f6ef;
+  --ink:#274b3e;
+  --soft:#6c7e72;
+  --muted:#8b967f;
+  --line:#e3e6dd;
+  --card:#fffefa;
+  --field:#ffffff;
+  --field-line:#d6ddd3;
+  --tint:#edf2e8;
+  --tint-ink:#56745d;
+  --accent:#72917b;
+  --gold:#c8a56b;
+  --on-ink:#ffffff;
+  --nav:#fffefaf5;
+  --outer:#e8eee7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#16201c;
+    --ink:#dfe9e2;
+    --soft:#a3b3a8;
+    --muted:#8a9a8f;
+    --line:#2a3832;
+    --card:#1c2823;
+    --field:#202d27;
+    --field-line:#33433b;
+    --tint:#26362e;
+    --tint-ink:#b8d2be;
+    --accent:#7fa48a;
+    --gold:#c8a56b;
+    --on-ink:#16201c;
+    --nav:#1c2823f2;
+    --outer:#111915;
+  }
+}
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,select,textarea,input { font:inherit; }
+button { cursor:pointer; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.app {
+  max-width:470px;
+  min-height:100dvh;
+  margin:auto;
+  position:relative;
+  padding:30px 23px 110px;
+}
+.brand { font-size:32px;font-weight:650;letter-spacing:-2px; }
+.top { display:flex;align-items:center;justify-content:space-between; }
+.tag { font-size:11px;letter-spacing:1.7px;text-transform:uppercase;color:var(--soft); }
+.eyebrow {
+  font-size:12px;text-transform:uppercase;letter-spacing:2px;
+  color:var(--muted);margin-top:42px;
+}
+.headline {
+  font-family:Georgia,serif;font-size:39px;line-height:1.12;
+  letter-spacing:-1.2px;font-weight:normal;margin:13px 0;
+}
+.sub { font-size:15px;line-height:1.7;color:var(--soft);margin:0; }
+.card {
+  background:var(--card);border:1px solid var(--line);
+  border-radius:23px;padding:25px;margin-top:25px;
+  box-shadow:0 9px 30px #274b3e08;
+}
+.card-top { display:flex;justify-content:space-between;align-items:center;gap:10px; }
+.pill {
+  display:inline-block;background:var(--tint);padding:8px 12px;
+  border-radius:50px;color:var(--tint-ink);font-size:12px;
+}
+.day-count { font-size:12px;color:var(--muted); }
+.quote {
+  font-family:Georgia,serif;font-size:26px;
+  line-height:1.48;margin:25px 0 27px;
+}
+.actions { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+.btn {
+  border:1px solid var(--ink);border-radius:14px;
+  padding:15px 12px;background:var(--ink);
+  color:var(--on-ink);font-weight:600;
+}
+.btn.secondary { background:transparent;color:var(--ink); }
+.btn.small { padding:11px 14px; }
+.btn.quiet { border-color:var(--line);color:var(--soft);background:transparent;font-weight:500; }
+.btn.full { width:100%;margin-top:22px; }
+.section { margin-top:36px; }
+.section h2 { font-size:18px;letter-spacing:-.3px;margin:0 0 10px; }
+.prompt {
+  border-left:3px solid var(--gold);
+  padding-left:16px;line-height:1.7;color:var(--soft);
+  margin:0 0 16px;
+}
+.streak {
+  display:flex;align-items:center;gap:12px;
+  margin-top:16px;padding:14px 16px;
+  background:var(--tint);border-radius:16px;
+  font-size:14px;color:var(--tint-ink);line-height:1.5;
+}
+.streak b { font-size:22px;font-family:Georgia,serif;font-weight:normal;color:var(--ink); }
+.nav {
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:min(470px,100%);display:grid;
+  grid-template-columns:repeat(3,1fr);
+  padding:13px 12px max(15px,env(safe-area-inset-bottom));
+  background:var(--nav);border-top:1px solid var(--line);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  z-index:5;
+}
+.nav button {
+  border:0;background:none;color:var(--muted);
+  padding:5px;font-size:13px;
+}
+.nav button[aria-current="page"] { color:var(--ink);font-weight:700; }
+.screen { display:none; }
+.screen.active { display:block; animation:fadein .35s ease; }
+@keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+label, .label {
+  display:block;margin:22px 0 8px;
+  font-weight:600;font-size:14px;
+}
+select,textarea,input {
+  width:100%;border:1px solid var(--field-line);
+  border-radius:13px;background:var(--field);
+  padding:13px;color:var(--ink);
+}
+textarea { min-height:120px;resize:vertical;line-height:1.6; }
+.hint { font-size:12px;line-height:1.6;color:var(--soft); }
+.plan {
+  padding:15px;border:1px solid var(--line);
+  border-radius:15px;margin-top:12px;line-height:1.5;font-size:14px;
+}
+.plan strong { display:block;margin-bottom:5px;font-size:15px; }
+.status {
+  font-size:13px;color:var(--soft);
+  min-height:20px;margin-top:12px;
+}
+.chips { display:flex;flex-wrap:wrap;gap:8px; }
+.chips button, .voice-picker button {
+  border:1px solid var(--line);border-radius:12px;
+  background:var(--field);padding:11px 14px;color:var(--ink);
+}
+.chips button[aria-pressed="true"], .voice-picker button[aria-pressed="true"] {
+  background:var(--tint);border-color:var(--accent);font-weight:700;
+}
+.voice-picker { display:flex;gap:9px;margin:0 0 15px; }
+.voice-picker button { flex:1; }
+.listen-active { animation:softpulse 2s ease-in-out infinite; }
+@keyframes softpulse {
+  0%,100% { box-shadow:0 0 0 3px rgba(103,145,113,.10); }
+  50% { box-shadow:0 0 0 9px rgba(103,145,113,.18); }
+}
+.row { display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px; }
+.history { margin-top:12px; }
+.history details {
+  border:1px solid var(--line);border-radius:15px;
+  background:var(--card);margin-top:10px;
+}
+.history summary {
+  list-style:none;cursor:pointer;padding:14px 16px;
+  display:flex;justify-content:space-between;gap:10px;font-size:14px;
+}
+.history summary::-webkit-details-marker { display:none; }
+.history summary span:last-child { color:var(--soft); }
+.history .entry-body { padding:0 16px 14px;font-size:14px;line-height:1.65;color:var(--soft); }
+.history .entry-body p { margin:6px 0;white-space:pre-wrap; }
+.history .entry-body b { color:var(--ink);font-weight:600; }
+.empty { font-size:14px;color:var(--soft);line-height:1.6; }
+@media (prefers-reduced-motion:reduce) {
+  .listen-active, .screen.active { animation:none; }
+}
+@media (min-width:600px) {
+  body { background:var(--outer); }
+  .app { background:var(--bg);box-shadow:0 0 55px #274b3e14; }
+}
+</style>
+</head>
+<body>
+<main class="app">
+<header class="top">
+  <div class="brand">amivo</div>
+  <div class="tag">a moment for you</div>
+</header>
+
+<!-- HOME -->
+<section id="home" class="screen active" aria-labelledby="welcomeHeadline">
+  <div class="eyebrow" id="greeting">Your morning moment</div>
+  <h1 class="headline" id="welcomeHeadline">A little light<br>for today.</h1>
+  <p class="sub">Take what you need. Go at your own pace.</p>
+
+  <div class="card">
+    <div class="card-top">
+      <span class="pill" id="categoryPill">Everyday encouragement</span>
+      <span class="day-count" id="todayLabel"></span>
+    </div>
+    <p class="quote" id="message"></p>
+
+    <span class="label" id="voiceLabel">Listening voice</span>
+    <div class="voice-picker" role="group" aria-labelledby="voiceLabel">
+      <button type="button" id="femaleVoice" aria-pressed="true">Warm voice</button>
+      <button type="button" id="maleVoice" aria-pressed="false">Calm voice</button>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn" id="listen">▶ Listen</button>
+      <button type="button" class="btn secondary" id="share">Share</button>
+    </div>
+    <div class="status" id="audioStatus" aria-live="polite"></div>
+  </div>
+
+  <div class="section">
+    <h2 id="eveningTitle">Tonight, come back to yourself.</h2>
+    <p class="prompt" id="eveningPrompt"></p>
+    <button type="button" class="btn secondary small" id="reflectBtn">Take a moment to reflect →</button>
+    <div class="streak" id="streak" hidden></div>
+  </div>
+</section>
+
+<!-- JOURNAL -->
+<section id="journal" class="screen" aria-labelledby="journalHeadline">
+  <div class="eyebrow" id="journalDate">Your private space</div>
+  <h1 class="headline" id="journalHeadline">How was<br>your day?</h1>
+  <p class="sub">No perfect answers. Just a moment to reflect.</p>
+
+  <span class="label" id="feelingLabel">How are you feeling?</span>
+  <div class="chips" id="feelings" role="group" aria-labelledby="feelingLabel"></div>
+
+  <label for="gratitude">What's one thing you're grateful for?</label>
+  <textarea id="gratitude" placeholder="Today, I'm grateful for..."></textarea>
+
+  <label for="reflection" id="reflectionLabel">Anything else on your mind?</label>
+  <textarea id="reflection" placeholder="Write freely..."></textarea>
+
+  <button type="button" class="btn full" id="save">Save today's reflection</button>
+  <p class="status" id="saveStatus" aria-live="polite"></p>
+
+  <div class="section">
+    <h2>Past reflections</h2>
+    <div class="history" id="history"></div>
+  </div>
+
+  <div class="section">
+    <p class="hint">
+      Prototype privacy: entries stay in this browser's local storage on this device only.
+      This is not secure cloud journaling, so please avoid entering sensitive information during testing.
+    </p>
+    <button type="button" class="btn quiet small" id="delete">Delete today's reflection</button>
+  </div>
+</section>
+
+<!-- SETTINGS -->
+<section id="settings" class="screen" aria-labelledby="settingsHeadline">
+  <div class="eyebrow">Make it yours</div>
+  <h1 class="headline" id="settingsHeadline">Your kind<br>of encouragement.</h1>
+
+  <label for="category">Message style</label>
+  <select id="category">
+    <option value="general">Everyday encouragement</option>
+    <option value="affirmation">Positive affirmations</option>
+    <option value="gratitude">Gratitude</option>
+    <option value="christian">Christian encouragement</option>
+    <option value="islamic">Islamic encouragement</option>
+    <option value="spiritual">Spiritual reflection</option>
+  </select>
+
+  <label for="time">Preferred morning time</label>
+  <input id="time" type="time" value="07:00">
+  <p class="hint">This prototype saves your preference but does not send notifications yet.</p>
+  <p class="status" id="settingsStatus" aria-live="polite"></p>
+
+  <div class="section">
+    <h2>Membership preview</h2>
+    <div class="plan">
+      <strong>Essential · CAD $7.99/month</strong>
+      One daily message with Listen and Share.
+    </div>
+    <div class="plan">
+      <strong>Premium · CAD $24.99/month</strong>
+      Morning and evening messages, audio, and private journaling with history.
+    </div>
+    <p class="hint">Proposed 30-day free trial. No billing or trial starts in this demo.</p>
+  </div>
+
+  <div class="section">
+    <h2>Your data</h2>
+    <p class="hint">Everything lives on this device. You can clear it at any time.</p>
+    <button type="button" class="btn quiet small" id="clearAll">Clear all amivo data</button>
+  </div>
+</section>
+
+<nav class="nav" aria-label="Main navigation">
+  <button type="button" data-nav="home" aria-current="page">⌂ Home</button>
+  <button type="button" data-nav="journal">✎ Journal</button>
+  <button type="button" data-nav="settings">⚙ Settings</button>
+</nav>
+</main>
+
+<script>
+/* ---------- Content ---------- */
+const STYLE_NAMES = {
+  general: "Everyday encouragement",
+  affirmation: "Positive affirmations",
+  gratitude: "Gratitude",
+  christian: "Christian encouragement",
+  islamic: "Islamic encouragement",
+  spiritual: "Spiritual reflection"
 };
-$('read').onclick=()=>{$('message').scrollIntoView({behavior:'smooth',block:'center'});$('message').setAttribute('tabindex','-1');$('message').focus({preventScroll:true});};
-const today=()=>new Date().toLocaleDateString('en-CA');let cat=localStorage.getItem('amivo_category')||'general';$('category').value=cat;$('time').value=localStorage.getItem('amivo_time')||'07:00';
-function update(){cat=$('category').value;$('message').textContent=messages[cat];$('categoryPill').textContent=$('category').selectedOptions[0].textContent;stop();}update();
-$('apply').onclick=()=>{localStorage.setItem('amivo_category',$('category').value);localStorage.setItem('amivo_time',$('time').value);update();$('settingsStatus').textContent='Preferences saved on this device.';};
-let entry=JSON.parse(localStorage.getItem('amivo_entry_'+today())||'null');if(entry){$('feeling').value=entry.feeling;$('gratitude').value=entry.gratitude;$('reflection').value=entry.reflection;}
-$('save').onclick=()=>{localStorage.setItem('amivo_entry_'+today(),JSON.stringify({feeling:$('feeling').value,gratitude:$('gratitude').value,reflection:$('reflection').value}));$('saveStatus').textContent="Today's reflection saved on this device.";};
-$('delete').onclick=()=>{localStorage.removeItem('amivo_entry_'+today());$('gratitude').value='';$('reflection').value='';$('saveStatus').textContent="Today's reflection deleted.";};
-let h=new Date().getHours();let period=h>=17?'evening':h<12?'morning':'afternoon';$('greeting').textContent='Your '+period+' moment';$('welcomeHeadline').innerHTML=period==='morning'?'Good morning.<br>Today is a fresh start.':period==='evening'?'Welcome back.<br>How was your day?':'Good afternoon.<br>Take a moment for you.';
-</script></body></html>
+
+const messages = {
+  general: [
+    "You don't have to have everything figured out. One thoughtful step today is enough.",
+    "Rest is not a reward you earn. It's part of how you keep going.",
+    "Small things done with care add up to a life you can be proud of.",
+    "You've handled hard days before. You can meet this one gently.",
+    "It's okay to start slowly. A quiet beginning is still a beginning.",
+    "Be as patient with yourself today as you would be with a good friend.",
+    "Nothing about today needs to be perfect to be worthwhile."
+  ],
+  affirmation: [
+    "You are allowed to grow at your own pace. Your effort matters, even when progress feels quiet.",
+    "I am worthy of kindness, including my own.",
+    "I can hold space for what I feel without letting it decide who I am.",
+    "My worth isn't measured by how much I get done today.",
+    "I am learning, and learning is allowed to be messy.",
+    "I trust myself to handle what comes, one moment at a time.",
+    "I bring something good to the people around me."
+  ],
+  gratitude: [
+    "There is room for gratitude in an ordinary day. Notice one good thing, however small.",
+    "Think of someone who made your life easier this week. Hold them in mind for a moment.",
+    "Warm light, a kind word, a good meal. Simple gifts are still gifts.",
+    "Gratitude doesn't erase hard things. It sits beside them and keeps you company.",
+    "Look around you right now. What's one thing here you'd miss if it were gone?",
+    "Your body carried you through yesterday. That's worth a quiet thank you.",
+    "Today, let one small joy be enough."
+  ],
+  christian: [
+    "May God's peace guide your steps today. You can meet this day with hope and kindness.",
+    "You are known and loved by God, even on the days you feel unseen.",
+    "Cast your worries on Him today. You were never meant to carry them alone.",
+    "His mercies are new this morning. Begin again with grace.",
+    "Let your light shine in small ways: a patient word, a helping hand.",
+    "Be still for a moment. God is present in the quiet.",
+    "Walk by faith today, one step at a time."
+  ],
+  islamic: [
+    "May Allah grant you ease, patience, and gratitude as you move through your day.",
+    "With hardship comes ease. Hold on to that promise today.",
+    "Begin with Bismillah, and trust that your efforts are seen.",
+    "May your heart find rest in the remembrance of Allah.",
+    "Every kind word you speak today is a form of charity.",
+    "Sabr is beautiful. Be gentle with yourself while you wait.",
+    "Say Alhamdulillah for one small blessing, and watch your heart soften."
+  ],
+  spiritual: [
+    "May you find stillness within yourself and carry compassion into the world around you.",
+    "Take three slow breaths. Let each one bring you a little more home.",
+    "You are part of something larger, and you belong here.",
+    "Let go of what isn't yours to carry today.",
+    "Presence is a gift you can give yourself right now.",
+    "May you notice the sacred in ordinary moments.",
+    "Meet the day with an open hand rather than a closed fist."
+  ]
+};
+
+const eveningPrompts = [
+  "What was one small thing that made today meaningful?",
+  "When did you feel most like yourself today?",
+  "What's something you handled better than you expected?",
+  "Who or what brought you a moment of ease today?",
+  "What can you let go of before you sleep tonight?",
+  "What's one kind thing you did, for someone else or for yourself?",
+  "What would you like to carry into tomorrow?"
+];
+
+const FEELINGS = ["Peaceful", "Hopeful", "Okay", "Tired", "Overwhelmed"];
+const DEFAULT_FEELING = "Okay";
+
+/* ---------- Helpers ---------- */
+const $ = id => document.getElementById(id);
+
+const store = {
+  get(key, fallback = null) {
+    try { const v = localStorage.getItem(key); return v === null ? fallback : v; }
+    catch (e) { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem(key, value); return true; }
+    catch (e) { return false; }
+  },
+  remove(key) { try { localStorage.removeItem(key); } catch (e) {} },
+  keys() { try { return Object.keys(localStorage); } catch (e) { return []; } }
+};
+
+const ENTRY_PREFIX = "amivo_entry_";
+
+function dateKey(d = new Date()) {
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+}
+function parseKey(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function dayNumber(d = new Date()) {
+  return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+}
+function prettyDate(d, withYear = false) {
+  return d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", ...(withYear ? { year: "numeric" } : {}) });
+}
+function periodOf(hour) {
+  return hour >= 17 ? "evening" : hour < 12 ? "morning" : "afternoon";
+}
+function readEntry(key) {
+  try { return JSON.parse(store.get(ENTRY_PREFIX + key) || "null"); } catch (e) { return null; }
+}
+
+/* ---------- State ---------- */
+let cat = store.get("amivo_category", "general");
+if (!messages[cat]) cat = "general";
+let selectedVoice = store.get("amivo_voice", "female");
+let currentKey = dateKey();
+let currentPeriod = periodOf(new Date().getHours());
+let currentMessageIndex = 0;
+let feeling = DEFAULT_FEELING;
+
+/* ---------- Navigation ---------- */
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
+  document.querySelectorAll("[data-nav]").forEach(b => {
+    if (b.dataset.nav === id) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  if (id !== "home") stopAudio();
+  if (id === "journal") renderHistory();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => show(b.dataset.nav)));
+$("reflectBtn").addEventListener("click", () => show("journal"));
+
+/* ---------- Home ---------- */
+function renderHome() {
+  const now = new Date();
+  const day = dayNumber(now);
+  const list = messages[cat];
+  currentMessageIndex = day % list.length;
+
+  $("message").textContent = list[currentMessageIndex];
+  $("categoryPill").textContent = STYLE_NAMES[cat];
+  $("todayLabel").textContent = now.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+  const period = periodOf(now.getHours());
+  $("greeting").textContent = "Your " + period + " moment";
+  $("welcomeHeadline").innerHTML =
+    period === "morning" ? "Good morning.<br>A little light for today." :
+    period === "evening" ? "Good evening.<br>You made it through today." :
+    "Good afternoon.<br>Take a moment for you.";
+
+  $("eveningTitle").textContent = period === "evening" ? "Come back to yourself." : "Tonight, come back to yourself.";
+  $("eveningPrompt").textContent = eveningPrompts[day % eveningPrompts.length];
+
+  const hasToday = !!readEntry(dateKey(now));
+  $("reflectBtn").textContent = hasToday ? "✓ View today's reflection" : "Take a moment to reflect →";
+  renderStreak();
+}
+
+function renderStreak() {
+  const d = new Date();
+  if (!readEntry(dateKey(d))) d.setDate(d.getDate() - 1);
+  let count = 0;
+  while (readEntry(dateKey(d))) { count++; d.setDate(d.getDate() - 1); }
+
+  const total = store.keys().filter(k => k.startsWith(ENTRY_PREFIX)).length;
+  const el = $("streak");
+  if (total === 0) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = count > 1
+    ? `<b>${count}</b><span>days in a row. Showing up for yourself matters.</span>`
+    : `<b>${total}</b><span>${total === 1 ? "reflection" : "reflections"} so far. Every one counts.</span>`;
+}
+
+/* ---------- Voice + audio ---------- */
+const audio = new Audio();
+audio.preload = "none";
+let playing = false;
+
+function setAudioStatus(msg) { $("audioStatus").textContent = msg; }
+
+function setPlaying(on) {
+  playing = on;
+  $("listen").classList.toggle("listen-active", on);
+  $("listen").textContent = on ? "■ Stop" : "▶ Listen";
+}
+
+function stopAudio() {
+  audio.pause();
+  try { audio.currentTime = 0; } catch (e) {}
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  setPlaying(false);
+}
+
+function updateVoiceButtons() {
+  ["female", "male"].forEach(v => $(v + "Voice").setAttribute("aria-pressed", String(selectedVoice === v)));
+}
+function chooseVoice(v) {
+  stopAudio();
+  selectedVoice = v;
+  store.set("amivo_voice", v);
+  updateVoiceButtons();
+  setAudioStatus(v === "female" ? "Warm voice selected." : "Calm voice selected.");
+}
+$("femaleVoice").onclick = () => chooseVoice("female");
+$("maleVoice").onclick = () => chooseVoice("male");
+
+// Recorded files: audio/{style}-{messageNumber}-{voice}.mp3, e.g. audio/general-1-female.mp3
+function audioPath() {
+  return `audio/${cat}-${currentMessageIndex + 1}-${selectedVoice}.mp3`;
+}
+
+function pickDeviceVoice() {
+  const voices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  if (!voices.length) return null;
+  const femaleRe = /female|samantha|victoria|karen|moira|tessa|zira|aria|jenny|serena|fiona|allison|ava|susan/i;
+  const maleRe = /\bmale\b|daniel|alex|fred|david|guy|arthur|oliver|aaron|tom|rishi/i;
+  const match = selectedVoice === "female"
+    ? voices.find(v => femaleRe.test(v.name))
+    : voices.find(v => maleRe.test(v.name) && !/female/i.test(v.name));
+  return match || voices[0];
+}
+
+function speakWithDevice(text) {
+  if (!("speechSynthesis" in window)) {
+    setPlaying(false);
+    setAudioStatus("Audio is coming soon on this device.");
+    return;
+  }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const v = pickDeviceVoice();
+  if (v) u.voice = v;
+  u.rate = 0.9;
+  u.pitch = selectedVoice === "female" ? 1.05 : 0.9;
+  u.onend = () => { if (playing) { setPlaying(false); setAudioStatus("Finished listening."); } };
+  u.onerror = () => { setPlaying(false); };
+  speechSynthesis.speak(u);
+  setAudioStatus("Playing with your device's voice.");
+}
+
+$("listen").onclick = async () => {
+  if (playing) { stopAudio(); setAudioStatus("Playback stopped."); return; }
+  stopAudio();
+  setPlaying(true);
+  setAudioStatus("Loading your encouragement...");
+  audio.src = audioPath();
+  try {
+    await audio.play();
+    setAudioStatus("Playing your encouragement aloud.");
+  } catch (e) {
+    // No recording yet (or blocked): fall back to the device's built-in voice.
+    if (playing) speakWithDevice($("message").textContent);
+  }
+};
+audio.onended = () => { setPlaying(false); setAudioStatus("Finished listening."); };
+
+if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => {};
+
+/* ---------- Share ---------- */
+$("share").onclick = async () => {
+  const text = `"${$("message").textContent}" — from amivo`;
+  if (navigator.share) {
+    try { await navigator.share({ text }); } catch (e) {}
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    setAudioStatus("Copied. Paste it anywhere to share.");
+  } catch (e) {
+    setAudioStatus("Sharing isn't available on this device.");
+  }
+};
+
+/* ---------- Journal ---------- */
+function renderFeelings() {
+  const wrap = $("feelings");
+  wrap.innerHTML = "";
+  FEELINGS.forEach(f => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = f;
+    b.setAttribute("aria-pressed", String(f === feeling));
+    b.onclick = () => { feeling = f; renderFeelings(); };
+    wrap.appendChild(b);
+  });
+}
+
+function loadToday() {
+  currentKey = dateKey();
+  const entry = readEntry(currentKey);
+  feeling = (entry && entry.feeling) || DEFAULT_FEELING;
+  $("gratitude").value = (entry && entry.gratitude) || "";
+  $("reflection").value = (entry && entry.reflection) || "";
+  $("journalDate").textContent = prettyDate(new Date());
+  $("reflectionLabel").textContent = eveningPrompts[dayNumber() % eveningPrompts.length];
+  $("saveStatus").textContent = entry ? "You've already reflected today. You can update it anytime." : "";
+  renderFeelings();
+}
+
+$("save").onclick = () => {
+  const gratitude = $("gratitude").value.trim();
+  const reflection = $("reflection").value.trim();
+  const ok = store.set(ENTRY_PREFIX + currentKey, JSON.stringify({
+    feeling, gratitude, reflection, savedAt: new Date().toISOString()
+  }));
+  $("saveStatus").textContent = ok
+    ? "Today's reflection is saved on this device."
+    : "Couldn't save. Your browser may be blocking storage.";
+  renderHistory();
+  renderHome();
+};
+
+$("delete").onclick = () => {
+  if (!readEntry(currentKey)) { $("saveStatus").textContent = "There's nothing saved for today yet."; return; }
+  if (!confirm("Delete today's reflection? This can't be undone.")) return;
+  store.remove(ENTRY_PREFIX + currentKey);
+  loadToday();
+  $("saveStatus").textContent = "Today's reflection was deleted.";
+  renderHistory();
+  renderHome();
+};
+
+function renderHistory() {
+  const wrap = $("history");
+  const keys = store.keys()
+    .filter(k => k.startsWith(ENTRY_PREFIX))
+    .map(k => k.slice(ENTRY_PREFIX.length))
+    .filter(k => k !== currentKey)
+    .sort()
+    .reverse();
+
+  wrap.innerHTML = "";
+  if (!keys.length) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = "Your earlier reflections will gather here, one day at a time.";
+    wrap.appendChild(p);
+    return;
+  }
+
+  keys.forEach(key => {
+    const e = readEntry(key);
+    if (!e) return;
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    const dateSpan = document.createElement("span");
+    dateSpan.textContent = prettyDate(parseKey(key));
+    const moodSpan = document.createElement("span");
+    moodSpan.textContent = e.feeling || "";
+    summary.append(dateSpan, moodSpan);
+
+    const body = document.createElement("div");
+    body.className = "entry-body";
+    const addLine = (label, text) => {
+      if (!text) return;
+      const p = document.createElement("p");
+      const b = document.createElement("b");
+      b.textContent = label + " ";
+      p.append(b, document.createTextNode(text));
+      body.appendChild(p);
+    };
+    addLine("Grateful for:", e.gratitude);
+    addLine("Reflection:", e.reflection);
+    if (!e.gratitude && !e.reflection) addLine("Feeling:", e.feeling || "—");
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "btn quiet small";
+    del.textContent = "Delete this entry";
+    del.style.marginTop = "8px";
+    del.onclick = () => {
+      if (!confirm("Delete this reflection? This can't be undone.")) return;
+      store.remove(ENTRY_PREFIX + key);
+      renderHistory();
+      renderHome();
+    };
+    body.appendChild(del);
+
+    details.append(summary, body);
+    wrap.appendChild(details);
+  });
+}
+
+/* ---------- Settings (saved as you change them) ---------- */
+$("category").value = cat;
+$("time").value = store.get("amivo_time", "07:00");
+
+$("category").addEventListener("change", () => {
+  cat = $("category").value;
+  store.set("amivo_category", cat);
+  stopAudio();
+  setAudioStatus("");
+  renderHome();
+  $("settingsStatus").textContent = "Message style saved.";
+});
+$("time").addEventListener("change", () => {
+  store.set("amivo_time", $("time").value);
+  $("settingsStatus").textContent = "Morning time saved.";
+});
+
+$("clearAll").onclick = () => {
+  if (!confirm("Clear all amivo data on this device, including every reflection?")) return;
+  store.keys().filter(k => k.startsWith("amivo_")).forEach(k => store.remove(k));
+  cat = "general";
+  selectedVoice = "female";
+  $("category").value = cat;
+  $("time").value = "07:00";
+  updateVoiceButtons();
+  loadToday();
+  renderHistory();
+  renderHome();
+  $("settingsStatus").textContent = "All amivo data was cleared from this device.";
+};
+
+/* ---------- Keep the day fresh if the app stays open ---------- */
+function refreshIfNeeded() {
+  const now = new Date();
+  const key = dateKey(now);
+  const period = periodOf(now.getHours());
+  if (key !== currentKey) {
+    loadToday();
+    renderHistory();
+  }
+  if (key !== currentKey || period !== currentPeriod) {
+    currentPeriod = period;
+    if (!playing) renderHome();
+  }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshIfNeeded(); });
+setInterval(refreshIfNeeded, 60000);
+
+/* ---------- Start ---------- */
+updateVoiceButtons();
+loadToday();
+renderHome();
+</script>
+</body>
+</html>
