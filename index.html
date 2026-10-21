@@ -157,19 +157,12 @@ textarea { min-height:120px;resize:vertical;line-height:1.6; }
   min-height:20px;margin-top:12px;
 }
 .chips { display:flex;flex-wrap:wrap;gap:8px; }
-.chips button, .voice-picker button {
+.chips button {
   border:1px solid var(--line);border-radius:12px;
   background:var(--field);padding:11px 14px;color:var(--ink);
 }
-.chips button[aria-pressed="true"], .voice-picker button[aria-pressed="true"] {
+.chips button[aria-pressed="true"] {
   background:var(--tint);border-color:var(--accent);font-weight:700;
-}
-.voice-picker { display:flex;gap:9px;margin:0 0 15px; }
-.voice-picker button { flex:1; }
-.listen-active { animation:softpulse 2s ease-in-out infinite; }
-@keyframes softpulse {
-  0%,100% { box-shadow:0 0 0 3px rgba(103,145,113,.10); }
-  50% { box-shadow:0 0 0 9px rgba(103,145,113,.18); }
 }
 .row { display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px; }
 .history { margin-top:12px; }
@@ -204,7 +197,7 @@ input[type="time"]:disabled { opacity:.45; }
 }
 .notice b { color:var(--ink); }
 @media (prefers-reduced-motion:reduce) {
-  .listen-active, .screen.active { animation:none; }
+  .screen.active { animation:none; }
 }
 @media (min-width:600px) {
   body { background:var(--outer); }
@@ -232,20 +225,10 @@ input[type="time"]:disabled { opacity:.45; }
     </div>
     <p class="quote" id="message"></p>
 
-    <!-- Shown only when a real recording exists for today's message (see audio/ in SETUP.md) -->
-    <div id="voiceControls" hidden>
-      <span class="label" id="voiceLabel">Listening voice</span>
-      <div class="voice-picker" role="group" aria-labelledby="voiceLabel">
-        <button type="button" id="femaleVoice" aria-pressed="true">Warm voice</button>
-        <button type="button" id="maleVoice" aria-pressed="false">Calm voice</button>
-      </div>
-    </div>
-
-    <div class="actions single" id="cardActions">
-      <button type="button" class="btn" id="listen" hidden>▶ Listen</button>
+    <div class="actions single">
       <button type="button" class="btn secondary" id="share">Share</button>
     </div>
-    <div class="status" id="audioStatus" aria-live="polite"></div>
+    <div class="status" id="shareStatus" aria-live="polite"></div>
   </div>
 
   <div class="section">
@@ -337,7 +320,7 @@ input[type="time"]:disabled { opacity:.45; }
     </div>
     <div class="plan">
       <strong>Premium · CAD $4.99/month</strong>
-      Morning and evening messages, private journaling with history, and audio as it's added.
+      Morning and evening messages, plus private journaling with history.
     </div>
     <p class="hint">Proposed 30-day free trial. No billing or trial starts in this demo.</p>
   </div>
@@ -423,7 +406,6 @@ function readEntry(key) {
 
 /* ---------- State ---------- */
 let cat = store.get("amivo_category", "general");
-let selectedVoice = store.get("amivo_voice", "female");
 let currentKey = dateKey();
 let currentPeriod = periodOf(new Date().getHours());
 let currentMessageIndex = 0;
@@ -436,7 +418,6 @@ function show(id) {
     if (b.dataset.nav === id) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
   });
-  if (id !== "home") stopAudio();
   if (id === "journal") renderHistory();
   window.scrollTo(0, 0);
 }
@@ -464,10 +445,38 @@ function renderHome() {
   $("eveningTitle").textContent = period === "evening" ? "Come back to yourself." : "Tonight, come back to yourself.";
   $("eveningPrompt").textContent = eveningPrompts[day % eveningPrompts.length];
 
+  loadDailyMessage(dateKey(now), cat);
+
   const hasToday = !!readEntry(dateKey(now));
   $("reflectBtn").textContent = hasToday ? "✓ View today's reflection" : "Take a moment to reflect →";
   renderStreak();
-  checkRecordings();
+}
+
+// Today's brand-new message and evening question, written by the backend.
+// Shows the built-in rotation until it arrives, and remembers it for offline use.
+async function loadDailyMessage(key, style) {
+  const cacheKey = `amivo_daily_${key}_${style}`;
+  const apply = d => {
+    if (dateKey() !== key || cat !== style) return; // the day or style changed meanwhile
+    if (d.message) $("message").textContent = d.message;
+    if (d.prompt) {
+      $("eveningPrompt").textContent = d.prompt;
+      $("reflectionLabel").textContent = d.prompt;
+    }
+  };
+  // Tidy up older days' saved messages.
+  store.keys().filter(k => k.startsWith("amivo_daily_") && !k.startsWith(`amivo_daily_${key}_`)).forEach(k => store.remove(k));
+  try { const saved = JSON.parse(store.get(cacheKey) || "null"); if (saved) apply(saved); } catch (e) {}
+  if (!CONFIG.API_URL) return;
+  try {
+    const url = CONFIG.API_URL.replace(/\/subscribe$/, "/daily") +
+      `?date=${encodeURIComponent(key)}&style=${encodeURIComponent(style)}`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const d = await res.json();
+    if (d.fresh) store.set(cacheKey, JSON.stringify({ message: d.message, prompt: d.prompt }));
+    apply(d);
+  } catch (e) { /* offline: keep what's showing */ }
 }
 
 function renderStreak() {
@@ -485,85 +494,7 @@ function renderStreak() {
     : `<b>${total}</b><span>${total === 1 ? "reflection" : "reflections"} so far. Every one counts.</span>`;
 }
 
-/* ---------- Voice + audio ---------- */
-const audio = new Audio();
-audio.preload = "none";
-let playing = false;
-
-function setAudioStatus(msg) { $("audioStatus").textContent = msg; }
-
-function setPlaying(on) {
-  playing = on;
-  $("listen").classList.toggle("listen-active", on);
-  $("listen").textContent = on ? "■ Stop" : "▶ Listen";
-}
-
-function stopAudio() {
-  audio.pause();
-  try { audio.currentTime = 0; } catch (e) {}
-  setPlaying(false);
-}
-
-function updateVoiceButtons() {
-  ["female", "male"].forEach(v => $(v + "Voice").setAttribute("aria-pressed", String(selectedVoice === v)));
-}
-function chooseVoice(v) {
-  stopAudio();
-  selectedVoice = v;
-  store.set("amivo_voice", v);
-  updateVoiceButtons();
-  setAudioStatus(v === "female" ? "Warm voice selected." : "Calm voice selected.");
-}
-$("femaleVoice").onclick = () => chooseVoice("female");
-$("maleVoice").onclick = () => chooseVoice("male");
-
-// Recorded files: audio/{style}-{messageNumber}-{voice}.mp3, e.g. audio/general-1-female.mp3
-function audioPath(voice = selectedVoice) {
-  return `audio/${cat}-${currentMessageIndex + 1}-${voice}.mp3`;
-}
-
-async function recordingExists(path) {
-  try {
-    const res = await fetch(path, { method: "HEAD", cache: "no-cache" });
-    return res.ok && !/text\/html/i.test(res.headers.get("content-type") || "");
-  } catch (e) { return false; }
-}
-
-// Only show Listen (and the voice choice) when real recordings exist for today's message.
-let recordingCheck = 0;
-async function checkRecordings() {
-  const token = ++recordingCheck;
-  const [female, male] = await Promise.all([
-    recordingExists(audioPath("female")),
-    recordingExists(audioPath("male"))
-  ]);
-  if (token !== recordingCheck) return; // a newer check started
-  const any = female || male;
-  if (any && !(selectedVoice === "female" ? female : male)) {
-    selectedVoice = female ? "female" : "male";
-    updateVoiceButtons();
-  }
-  $("listen").hidden = !any;
-  $("cardActions").classList.toggle("single", !any);
-  $("voiceControls").hidden = !(female && male);
-  if (!any) stopAudio();
-}
-
-$("listen").onclick = async () => {
-  if (playing) { stopAudio(); setAudioStatus("Playback stopped."); return; }
-  stopAudio();
-  setPlaying(true);
-  setAudioStatus("Loading your encouragement...");
-  audio.src = audioPath();
-  try {
-    await audio.play();
-    setAudioStatus("");
-  } catch (e) {
-    setPlaying(false);
-    setAudioStatus("This recording couldn't play right now. Please try again.");
-  }
-};
-audio.onended = () => { setPlaying(false); setAudioStatus(""); };
+function setShareStatus(msg) { $("shareStatus").textContent = msg; }
 
 /* ---------- Share ---------- */
 $("share").onclick = async () => {
@@ -574,9 +505,9 @@ $("share").onclick = async () => {
   }
   try {
     await navigator.clipboard.writeText(text);
-    setAudioStatus("Copied. Paste it anywhere to share.");
+    setShareStatus("Copied. Paste it anywhere to share.");
   } catch (e) {
-    setAudioStatus("Sharing isn't available on this device.");
+    setShareStatus("Sharing isn't available on this device.");
   }
 };
 
@@ -718,8 +649,7 @@ function savePrefs() {
 $("category").addEventListener("change", () => {
   cat = $("category").value;
   store.set("amivo_category", cat);
-  stopAudio();
-  setAudioStatus("");
+  setShareStatus("");
   renderHome();
   $("settingsStatus").textContent = "Message style saved.";
   syncSchedule();
@@ -747,10 +677,8 @@ $("clearAll").onclick = async () => {
   }
   store.keys().filter(k => k.startsWith("amivo_")).forEach(k => store.remove(k));
   cat = "general";
-  selectedVoice = "female";
   Object.assign(prefs, { morningOn: true, morningTime: "07:30", eveningOn: true, eveningTime: "18:00" });
   renderPrefs();
-  updateVoiceButtons();
   loadToday();
   renderHistory();
   renderHome();
@@ -945,7 +873,7 @@ function refreshIfNeeded() {
   }
   if (newDay || period !== currentPeriod) {
     currentPeriod = period;
-    if (!playing) renderHome();
+    renderHome();
   }
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshIfNeeded(); });
@@ -956,7 +884,6 @@ setInterval(refreshIfNeeded, 60000);
   await loadContent();
   if (!messages[cat]) cat = "general";
   renderPrefs();
-  updateVoiceButtons();
   loadToday();
   renderHome();
   routeFromHash();
