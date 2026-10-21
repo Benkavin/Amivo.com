@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f8f6ef">
 <title>amivo — a little encouragement, every day</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="amivo">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
 :root {
   --bg:#f8f6ef;
@@ -179,6 +185,22 @@ textarea { min-height:120px;resize:vertical;line-height:1.6; }
 .history .entry-body p { margin:6px 0;white-space:pre-wrap; }
 .history .entry-body b { color:var(--ink);font-weight:600; }
 .empty { font-size:14px;color:var(--soft);line-height:1.6; }
+.switch-row {
+  display:flex;justify-content:space-between;align-items:center;
+  margin:22px 0 8px;
+}
+.switch-row label { margin:0; }
+input[type="checkbox"] {
+  width:22px;height:22px;padding:0;margin:0;
+  accent-color:var(--ink);flex:none;
+}
+input[type="time"]:disabled { opacity:.45; }
+.notice {
+  margin-top:18px;padding:14px 16px;border-radius:15px;
+  background:var(--tint);color:var(--tint-ink);
+  font-size:14px;line-height:1.6;
+}
+.notice b { color:var(--ink); }
 @media (prefers-reduced-motion:reduce) {
   .listen-active, .screen.active { animation:none; }
 }
@@ -276,19 +298,40 @@ textarea { min-height:120px;resize:vertical;line-height:1.6; }
     <option value="spiritual">Spiritual reflection</option>
   </select>
 
-  <label for="time">Preferred morning time</label>
-  <input id="time" type="time" value="07:00">
-  <p class="hint">This prototype saves your preference but does not send notifications yet.</p>
   <p class="status" id="settingsStatus" aria-live="polite"></p>
+
+  <div class="section">
+    <h2>Daily notifications</h2>
+    <p class="hint">Choose when amivo shows up on your phone. Times follow your phone's time zone.</p>
+
+    <div class="switch-row">
+      <label for="morningOn">Morning message</label>
+      <input type="checkbox" id="morningOn" checked>
+    </div>
+    <input id="morningTime" type="time" value="07:30" aria-label="Morning message time">
+
+    <div class="switch-row">
+      <label for="eveningOn">Evening reflection</label>
+      <input type="checkbox" id="eveningOn" checked>
+    </div>
+    <input id="eveningTime" type="time" value="18:00" aria-label="Evening reflection time">
+
+    <div class="notice" id="notifyNotice" hidden></div>
+    <div class="row">
+      <button type="button" class="btn small" id="notifyBtn">Turn on notifications</button>
+      <button type="button" class="btn secondary small" id="previewBtn" hidden>Preview one</button>
+    </div>
+    <p class="status" id="notifyStatus" aria-live="polite"></p>
+  </div>
 
   <div class="section">
     <h2>Membership preview</h2>
     <div class="plan">
-      <strong>Essential · CAD $7.99/month</strong>
+      <strong>Essential · CAD $2.99/month</strong>
       One daily message with Listen and Share.
     </div>
     <div class="plan">
-      <strong>Premium · CAD $24.99/month</strong>
+      <strong>Premium · CAD $4.99/month</strong>
       Morning and evening messages, audio, and private journaling with history.
     </div>
     <p class="hint">Proposed 30-day free trial. No billing or trial starts in this demo.</p>
@@ -309,82 +352,28 @@ textarea { min-height:120px;resize:vertical;line-height:1.6; }
 </main>
 
 <script>
-/* ---------- Content ---------- */
-const STYLE_NAMES = {
-  general: "Everyday encouragement",
-  affirmation: "Positive affirmations",
-  gratitude: "Gratitude",
-  christian: "Christian encouragement",
-  islamic: "Islamic encouragement",
-  spiritual: "Spiritual reflection"
+/* ---------- Setup: fill these in after the backend is ready (see SETUP.md) ---------- */
+const CONFIG = {
+  API_URL: "",          // e.g. "https://YOUR-PROJECT.supabase.co/functions/v1/subscribe"
+  VAPID_PUBLIC_KEY: ""  // the PUBLIC key only. Never put the private key here.
 };
 
-const messages = {
-  general: [
-    "You don't have to have everything figured out. One thoughtful step today is enough.",
-    "Rest is not a reward you earn. It's part of how you keep going.",
-    "Small things done with care add up to a life you can be proud of.",
-    "You've handled hard days before. You can meet this one gently.",
-    "It's okay to start slowly. A quiet beginning is still a beginning.",
-    "Be as patient with yourself today as you would be with a good friend.",
-    "Nothing about today needs to be perfect to be worthwhile."
-  ],
-  affirmation: [
-    "You are allowed to grow at your own pace. Your effort matters, even when progress feels quiet.",
-    "I am worthy of kindness, including my own.",
-    "I can hold space for what I feel without letting it decide who I am.",
-    "My worth isn't measured by how much I get done today.",
-    "I am learning, and learning is allowed to be messy.",
-    "I trust myself to handle what comes, one moment at a time.",
-    "I bring something good to the people around me."
-  ],
-  gratitude: [
-    "There is room for gratitude in an ordinary day. Notice one good thing, however small.",
-    "Think of someone who made your life easier this week. Hold them in mind for a moment.",
-    "Warm light, a kind word, a good meal. Simple gifts are still gifts.",
-    "Gratitude doesn't erase hard things. It sits beside them and keeps you company.",
-    "Look around you right now. What's one thing here you'd miss if it were gone?",
-    "Your body carried you through yesterday. That's worth a quiet thank you.",
-    "Today, let one small joy be enough."
-  ],
-  christian: [
-    "May God's peace guide your steps today. You can meet this day with hope and kindness.",
-    "You are known and loved by God, even on the days you feel unseen.",
-    "Cast your worries on Him today. You were never meant to carry them alone.",
-    "His mercies are new this morning. Begin again with grace.",
-    "Let your light shine in small ways: a patient word, a helping hand.",
-    "Be still for a moment. God is present in the quiet.",
-    "Walk by faith today, one step at a time."
-  ],
-  islamic: [
-    "May Allah grant you ease, patience, and gratitude as you move through your day.",
-    "With hardship comes ease. Hold on to that promise today.",
-    "Begin with Bismillah, and trust that your efforts are seen.",
-    "May your heart find rest in the remembrance of Allah.",
-    "Every kind word you speak today is a form of charity.",
-    "Sabr is beautiful. Be gentle with yourself while you wait.",
-    "Say Alhamdulillah for one small blessing, and watch your heart soften."
-  ],
-  spiritual: [
-    "May you find stillness within yourself and carry compassion into the world around you.",
-    "Take three slow breaths. Let each one bring you a little more home.",
-    "You are part of something larger, and you belong here.",
-    "Let go of what isn't yours to carry today.",
-    "Presence is a gift you can give yourself right now.",
-    "May you notice the sacred in ordinary moments.",
-    "Meet the day with an open hand rather than a closed fist."
-  ]
+/* ---------- Content (loaded from messages.json, shared with the notification sender) ---------- */
+let STYLE_NAMES = { general: "Everyday encouragement" };
+let messages = {
+  general: ["You don't have to have everything figured out. One thoughtful step today is enough."]
 };
+let eveningPrompts = ["What was one small thing that made today meaningful?"];
 
-const eveningPrompts = [
-  "What was one small thing that made today meaningful?",
-  "When did you feel most like yourself today?",
-  "What's something you handled better than you expected?",
-  "Who or what brought you a moment of ease today?",
-  "What can you let go of before you sleep tonight?",
-  "What's one kind thing you did, for someone else or for yourself?",
-  "What would you like to carry into tomorrow?"
-];
+async function loadContent() {
+  try {
+    const res = await fetch("messages.json", { cache: "no-cache" });
+    const data = await res.json();
+    STYLE_NAMES = data.styles;
+    messages = data.messages;
+    eveningPrompts = data.eveningPrompts;
+  } catch (e) { /* offline with no cache: keep the built-in fallback */ }
+}
 
 const FEELINGS = ["Peaceful", "Hopeful", "Okay", "Tired", "Overwhelmed"];
 const DEFAULT_FEELING = "Okay";
@@ -429,7 +418,6 @@ function readEntry(key) {
 
 /* ---------- State ---------- */
 let cat = store.get("amivo_category", "general");
-if (!messages[cat]) cat = "general";
 let selectedVoice = store.get("amivo_voice", "female");
 let currentKey = dateKey();
 let currentPeriod = periodOf(new Date().getHours());
@@ -702,8 +690,29 @@ function renderHistory() {
 }
 
 /* ---------- Settings (saved as you change them) ---------- */
-$("category").value = cat;
-$("time").value = store.get("amivo_time", "07:00");
+const prefs = {
+  morningOn: store.get("amivo_morning_on", "1") === "1",
+  morningTime: store.get("amivo_morning_time", store.get("amivo_time", "07:30")),
+  eveningOn: store.get("amivo_evening_on", "1") === "1",
+  eveningTime: store.get("amivo_evening_time", "18:00")
+};
+
+function renderPrefs() {
+  $("category").value = cat;
+  $("morningOn").checked = prefs.morningOn;
+  $("morningTime").value = prefs.morningTime;
+  $("morningTime").disabled = !prefs.morningOn;
+  $("eveningOn").checked = prefs.eveningOn;
+  $("eveningTime").value = prefs.eveningTime;
+  $("eveningTime").disabled = !prefs.eveningOn;
+}
+
+function savePrefs() {
+  store.set("amivo_morning_on", prefs.morningOn ? "1" : "0");
+  store.set("amivo_morning_time", prefs.morningTime);
+  store.set("amivo_evening_on", prefs.eveningOn ? "1" : "0");
+  store.set("amivo_evening_time", prefs.eveningTime);
+}
 
 $("category").addEventListener("change", () => {
   cat = $("category").value;
@@ -712,36 +721,220 @@ $("category").addEventListener("change", () => {
   setAudioStatus("");
   renderHome();
   $("settingsStatus").textContent = "Message style saved.";
-});
-$("time").addEventListener("change", () => {
-  store.set("amivo_time", $("time").value);
-  $("settingsStatus").textContent = "Morning time saved.";
+  syncSchedule();
 });
 
-$("clearAll").onclick = () => {
+$("morningOn").addEventListener("change", e => { prefs.morningOn = e.target.checked; onScheduleChange(); });
+$("eveningOn").addEventListener("change", e => { prefs.eveningOn = e.target.checked; onScheduleChange(); });
+$("morningTime").addEventListener("change", e => { if (e.target.value) prefs.morningTime = e.target.value; onScheduleChange(); });
+$("eveningTime").addEventListener("change", e => { if (e.target.value) prefs.eveningTime = e.target.value; onScheduleChange(); });
+
+function onScheduleChange() {
+  savePrefs();
+  renderPrefs();
+  syncSchedule().then(sent => {
+    setNotifyStatus(sent ? "Saved. " + describeSchedule() : "Saved on this device.");
+  });
+}
+
+$("clearAll").onclick = async () => {
   if (!confirm("Clear all amivo data on this device, including every reflection?")) return;
+  const sub = await currentSubscription();
+  if (sub) {
+    if (CONFIG.API_URL) await api({ action: "unsubscribe", endpoint: sub.endpoint }).catch(() => {});
+    await sub.unsubscribe().catch(() => {});
+  }
   store.keys().filter(k => k.startsWith("amivo_")).forEach(k => store.remove(k));
   cat = "general";
   selectedVoice = "female";
-  $("category").value = cat;
-  $("time").value = "07:00";
+  Object.assign(prefs, { morningOn: true, morningTime: "07:30", eveningOn: true, eveningTime: "18:00" });
+  renderPrefs();
   updateVoiceButtons();
   loadToday();
   renderHistory();
   renderHome();
+  renderNotify();
   $("settingsStatus").textContent = "All amivo data was cleared from this device.";
 };
+
+/* ---------- Notifications ---------- */
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const backendReady = () => !!(CONFIG.API_URL && CONFIG.VAPID_PUBLIC_KEY);
+
+let swReg = null;
+
+async function registerSW() {
+  if (!("serviceWorker" in navigator)) return null;
+  try { swReg = await navigator.serviceWorker.register("sw.js"); } catch (e) { swReg = null; }
+  return swReg;
+}
+
+async function currentSubscription() {
+  if (!swReg || !("pushManager" in swReg)) return null;
+  try { return await swReg.pushManager.getSubscription(); } catch (e) { return null; }
+}
+
+function urlB64ToUint8Array(b64) {
+  const pad = "=".repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+
+async function api(body) {
+  const res = await fetch(CONFIG.API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error("Request failed: " + res.status);
+  return res.json().catch(() => ({}));
+}
+
+function schedulePayload(sub) {
+  return {
+    action: "subscribe",
+    subscription: sub.toJSON(),
+    morning_enabled: prefs.morningOn,
+    morning_time: prefs.morningTime,
+    evening_enabled: prefs.eveningOn,
+    evening_time: prefs.eveningTime,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    category: cat
+  };
+}
+
+// Sends the latest times and style to the server. Returns true if it did.
+async function syncSchedule() {
+  if (!backendReady()) return false;
+  const sub = await currentSubscription();
+  if (!sub) return false;
+  try { await api(schedulePayload(sub)); return true; } catch (e) { return false; }
+}
+
+function niceTime(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date(); d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+function describeSchedule() {
+  const parts = [];
+  if (prefs.morningOn) parts.push("your morning message at " + niceTime(prefs.morningTime));
+  if (prefs.eveningOn) parts.push("your evening reflection at " + niceTime(prefs.eveningTime));
+  if (!parts.length) return "Both notifications are switched off.";
+  return "You'll get " + parts.join(" and ") + ".";
+}
+
+function setNotifyStatus(msg) { $("notifyStatus").textContent = msg; }
+
+function showNotice(html) {
+  $("notifyNotice").innerHTML = html;
+  $("notifyNotice").hidden = false;
+}
+
+async function renderNotify() {
+  const btn = $("notifyBtn");
+  $("notifyNotice").hidden = true;
+  $("previewBtn").hidden = true;
+  btn.hidden = false;
+  btn.disabled = false;
+
+  if (isIOS && !isStandalone) {
+    showNotice("On iPhone, notifications work once amivo is on your Home Screen. In Safari, tap the <b>Share</b> button, choose <b>Add to Home Screen</b>, then open amivo from your Home Screen and come back here.");
+    btn.hidden = true;
+    return;
+  }
+  if (!pushSupported) {
+    showNotice("This browser can't show notifications. Try Chrome on Android, or Safari on iPhone after adding amivo to your Home Screen.");
+    btn.hidden = true;
+    return;
+  }
+  if (Notification.permission === "denied") {
+    showNotice("Notifications are blocked for amivo. Allow them in your phone or browser settings, then come back here.");
+    btn.hidden = true;
+    return;
+  }
+  const sub = await currentSubscription();
+  const on = !!sub && Notification.permission === "granted";
+  btn.dataset.state = on ? "on" : "off";
+  btn.textContent = on ? "Turn off notifications" : "Turn on notifications";
+  btn.className = on ? "btn secondary small" : "btn small";
+  $("previewBtn").hidden = !on;
+}
+
+$("notifyBtn").onclick = async () => {
+  const btn = $("notifyBtn");
+  btn.disabled = true;
+  try {
+    if (btn.dataset.state === "on") {
+      const sub = await currentSubscription();
+      if (sub) {
+        if (CONFIG.API_URL) await api({ action: "unsubscribe", endpoint: sub.endpoint }).catch(() => {});
+        await sub.unsubscribe();
+      }
+      setNotifyStatus("Notifications are off. You can turn them back on anytime.");
+      return;
+    }
+    if (!backendReady()) {
+      setNotifyStatus("Notifications aren't connected yet. The sending service still needs to be set up.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      setNotifyStatus("No problem. You can turn them on anytime.");
+      return;
+    }
+    if (!swReg) await registerSW();
+    const reg = await navigator.serviceWorker.ready;
+    swReg = reg;
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToUint8Array(CONFIG.VAPID_PUBLIC_KEY)
+    });
+    await api(schedulePayload(sub));
+    setNotifyStatus("You're all set. " + describeSchedule());
+  } catch (e) {
+    setNotifyStatus("Something went wrong turning on notifications. Please try again in a moment.");
+  } finally {
+    renderNotify();
+  }
+};
+
+$("previewBtn").onclick = async () => {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification("Good morning", {
+      body: $("message").textContent,
+      icon: "icons/icon-192.png",
+      tag: "amivo-preview"
+    });
+    setNotifyStatus("Sent a preview to this device.");
+  } catch (e) {
+    setNotifyStatus("Couldn't show a preview here.");
+  }
+};
+
+/* ---------- Open straight to a screen from a notification (e.g. #journal) ---------- */
+function routeFromHash() {
+  const id = location.hash.slice(1);
+  if (["home", "journal", "settings"].includes(id)) show(id);
+}
+window.addEventListener("hashchange", routeFromHash);
 
 /* ---------- Keep the day fresh if the app stays open ---------- */
 function refreshIfNeeded() {
   const now = new Date();
   const key = dateKey(now);
   const period = periodOf(now.getHours());
-  if (key !== currentKey) {
+  const newDay = key !== currentKey;
+  if (newDay) {
     loadToday();
     renderHistory();
   }
-  if (key !== currentKey || period !== currentPeriod) {
+  if (newDay || period !== currentPeriod) {
     currentPeriod = period;
     if (!playing) renderHome();
   }
@@ -750,9 +943,19 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
 setInterval(refreshIfNeeded, 60000);
 
 /* ---------- Start ---------- */
-updateVoiceButtons();
-loadToday();
-renderHome();
+(async function init() {
+  await loadContent();
+  if (!messages[cat]) cat = "general";
+  renderPrefs();
+  updateVoiceButtons();
+  loadToday();
+  renderHome();
+  routeFromHash();
+  await registerSW();
+  renderNotify();
+  // Keep the server's copy of the schedule current (time zone changes, travel, etc.)
+  syncSchedule();
+})();
 </script>
 </body>
 </html>
