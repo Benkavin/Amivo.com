@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f8f6ef">
-<title>amivo — a little encouragement, every day</title>
+<title>amivo</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -14,7 +14,7 @@
 <meta name="description" content="A little encouragement, every day. A fresh message each morning and a gentle question each evening.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="amivo">
-<meta property="og:title" content="amivo — a little encouragement, every day">
+<meta property="og:title" content="amivo">
 <meta property="og:description" content="A fresh message each morning and a gentle question each evening.">
 <meta property="og:url" content="https://www.amivo.ca/">
 <meta property="og:image" content="https://www.amivo.ca/og-image.png">
@@ -325,6 +325,32 @@ input[type="time"]:disabled { opacity:.45; }
 
   <p class="status" id="settingsStatus" aria-live="polite"></p>
 
+  <div class="section" id="account">
+    <h2>Your account</h2>
+    <div id="signedOut">
+      <p class="hint">Sign up with your email to get daily notifications. No password needed.</p>
+      <form id="signupForm" novalidate>
+        <input id="signupEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address" required>
+        <div class="row">
+          <button type="submit" class="btn small" id="signupBtn">Sign up</button>
+        </div>
+      </form>
+      <form id="codeForm" hidden novalidate>
+        <p class="hint">We sent an email to <b id="sentTo"></b>. Tap the link in it, or type the code from the email here.</p>
+        <input id="signupCode" type="text" autocomplete="one-time-code" inputmode="numeric" maxlength="10" placeholder="Code from the email" aria-label="Code from the email">
+        <div class="row">
+          <button type="submit" class="btn small" id="codeBtn">Confirm</button>
+          <button type="button" class="btn quiet small" id="codeBack">Use a different email</button>
+        </div>
+      </form>
+    </div>
+    <div id="signedIn" hidden>
+      <p class="hint">Signed in as <b id="accountEmail"></b>.</p>
+      <button type="button" class="btn quiet small" id="signOutBtn">Sign out</button>
+    </div>
+    <p class="status" id="accountStatus" aria-live="polite"></p>
+  </div>
+
   <div class="section">
     <h2>Daily notifications</h2>
     <p class="hint">Choose when amivo shows up on your phone. Times follow your phone's time zone.</p>
@@ -364,7 +390,7 @@ input[type="time"]:disabled { opacity:.45; }
 
   <div class="section">
     <h2>Your data</h2>
-    <p class="hint">Everything lives on this device. You can clear it at any time.</p>
+    <p class="hint">Your reflections live only on this device. If you sign up, your email and notification times are kept so we can send your messages. You can clear this device at any time.</p>
     <button type="button" class="btn quiet small" id="clearAll">Clear all amivo data</button>
   </div>
 </section>
@@ -394,7 +420,10 @@ input[type="time"]:disabled { opacity:.45; }
 /* ---------- Setup: fill these in after the backend is ready (see SETUP.md) ---------- */
 const CONFIG = {
   API_URL: "https://jeyotgsaoizqdnupsbcg.supabase.co/functions/v1/subscribe",
-  VAPID_PUBLIC_KEY: ""  // optional: fetched from API_URL automatically when left empty
+  VAPID_PUBLIC_KEY: "",  // optional: fetched from API_URL automatically when left empty
+  // Sign-up uses Supabase Auth. The publishable key is safe to have in the page.
+  SUPABASE_URL: "https://jeyotgsaoizqdnupsbcg.supabase.co",
+  SUPABASE_KEY: "sb_publishable_vMETCEvzLSi47fasv92olw_IxP8KLm9"
 };
 
 /* ---------- Content (loaded from messages.json, shared with the notification sender) ---------- */
@@ -877,6 +906,7 @@ $("clearAll").onclick = async () => {
     if (CONFIG.API_URL) await api({ action: "unsubscribe", endpoint: sub.endpoint }).catch(() => {});
     await sub.unsubscribe().catch(() => {});
   }
+  await signOut();
   store.keys().filter(k => k.startsWith("amivo_")).forEach(k => store.remove(k));
   cat = "general";
   Object.assign(prefs, { morningOn: true, morningTime: "07:30", eveningOn: true, eveningTime: "18:00" });
@@ -923,9 +953,10 @@ function urlB64ToUint8Array(b64) {
 }
 
 async function api(body) {
+  const token = await accessToken();
   const res = await fetch(CONFIG.API_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: Object.assign({ "Content-Type": "application/json" }, token ? { Authorization: "Bearer " + token } : {}),
     body: JSON.stringify(body)
   });
   if (!res.ok) throw new Error("Request failed: " + res.status);
@@ -999,7 +1030,7 @@ async function renderNotify() {
   const sub = await currentSubscription();
   const on = !!sub && Notification.permission === "granted";
   btn.dataset.state = on ? "on" : "off";
-  btn.textContent = on ? "Turn off notifications" : "Turn on notifications";
+  btn.textContent = on ? "Turn off notifications" : session ? "Turn on notifications" : "Sign up to turn on notifications";
   btn.className = on ? "btn secondary small" : "btn small";
   $("previewBtn").hidden = !on;
 }
@@ -1019,6 +1050,11 @@ $("notifyBtn").onclick = async () => {
     }
     if (!backendReady()) {
       setNotifyStatus("Notifications aren't connected yet. The sending service still needs to be set up.");
+      return;
+    }
+    if (!session) {
+      setNotifyStatus("Sign up first, then turn on notifications.");
+      $("signupEmail").focus();
       return;
     }
     const permission = await Notification.requestPermission();
@@ -1064,6 +1100,146 @@ $("previewBtn").onclick = async () => {
   }
 };
 
+/* ---------- Account (Supabase Auth: email link or code, no password) ---------- */
+const SESSION_KEY = "amivo_session";
+let session = null;
+try { session = JSON.parse(store.get(SESSION_KEY, "null")); } catch (e) { session = null; }
+
+async function authFetch(path, body, token) {
+  const res = await fetch(CONFIG.SUPABASE_URL + "/auth/v1/" + path, {
+    method: "POST",
+    headers: Object.assign({ "Content-Type": "application/json", apikey: CONFIG.SUPABASE_KEY },
+      token ? { Authorization: "Bearer " + token } : {}),
+    body: JSON.stringify(body || {})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.msg || data.error_description || "Request failed"), { status: res.status });
+  return data;
+}
+
+function saveSession(s) {
+  session = s && s.access_token ? {
+    access_token: s.access_token,
+    refresh_token: s.refresh_token,
+    expires_at: s.expires_at || Math.floor(Date.now() / 1000) + Number(s.expires_in || 3600),
+    email: (s.user && s.user.email) || s.email || ""
+  } : null;
+  if (session) store.set(SESSION_KEY, JSON.stringify(session)); else store.remove(SESSION_KEY);
+  renderAccount();
+}
+
+// Returns a fresh access token, refreshing it if it's about to expire.
+async function accessToken() {
+  if (!session) return null;
+  if (session.expires_at - 60 > Date.now() / 1000) return session.access_token;
+  try {
+    saveSession(await authFetch("token?grant_type=refresh_token", { refresh_token: session.refresh_token }));
+  } catch (e) {
+    if (e.status >= 400 && e.status < 500) saveSession(null);
+    return null;
+  }
+  return session && session.access_token;
+}
+
+// Tapping the link in the email comes back here with the session in the address.
+function sessionFromLink() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("access_token")) {
+    const email = (() => {
+      try { return JSON.parse(atob(h.get("access_token").split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).email; }
+      catch (e) { return ""; }
+    })();
+    saveSession({ access_token: h.get("access_token"), refresh_token: h.get("refresh_token"),
+      expires_at: Number(h.get("expires_at")) || 0, expires_in: h.get("expires_in"), email });
+    history.replaceState(null, "", location.pathname + "#settings");
+    $("accountStatus").textContent = "You're signed up. Now you can turn on notifications.";
+    return true;
+  }
+  if (h.get("error_description")) {
+    history.replaceState(null, "", location.pathname + "#settings");
+    $("accountStatus").textContent = "That sign-up link didn't work or has expired. Please try again.";
+    return true;
+  }
+  return false;
+}
+
+function renderAccount() {
+  $("signedOut").hidden = !!session;
+  $("signedIn").hidden = !session;
+  if (session) $("accountEmail").textContent = session.email || "your email";
+  renderNotify();
+}
+
+let pendingEmail = "";
+
+$("signupForm").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("signupEmail").value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    $("accountStatus").textContent = "Please enter a valid email address.";
+    return;
+  }
+  $("signupBtn").disabled = true;
+  $("accountStatus").textContent = "Sending…";
+  try {
+    await authFetch("otp?redirect_to=" + encodeURIComponent(location.origin + location.pathname),
+      { email, create_user: true });
+    pendingEmail = email;
+    $("sentTo").textContent = email;
+    $("signupForm").hidden = true;
+    $("codeForm").hidden = false;
+    $("accountStatus").textContent = "";
+  } catch (err) {
+    $("accountStatus").textContent = err.status === 429
+      ? "Too many tries. Please wait a minute and try again."
+      : "Couldn't send the email. Please try again in a moment.";
+  } finally {
+    $("signupBtn").disabled = false;
+  }
+};
+
+$("codeForm").onsubmit = async e => {
+  e.preventDefault();
+  const token = $("signupCode").value.replace(/\s/g, "");
+  if (!token) return;
+  $("codeBtn").disabled = true;
+  try {
+    saveSession(await authFetch("verify", { type: "email", email: pendingEmail, token }));
+    $("codeForm").hidden = true;
+    $("signupForm").hidden = false;
+    $("signupCode").value = "";
+    $("accountStatus").textContent = "You're signed up. Now you can turn on notifications.";
+  } catch (err) {
+    $("accountStatus").textContent = "That code didn't work. Check the email and try again.";
+  } finally {
+    $("codeBtn").disabled = false;
+  }
+};
+
+$("codeBack").onclick = () => {
+  $("codeForm").hidden = true;
+  $("signupForm").hidden = false;
+  $("accountStatus").textContent = "";
+};
+
+// Signing out also stops notifications on this device, since they belong to the account.
+async function signOut() {
+  if (!session) return;
+  const sub = await currentSubscription();
+  if (sub) {
+    if (CONFIG.API_URL) await api({ action: "unsubscribe", endpoint: sub.endpoint }).catch(() => {});
+    await sub.unsubscribe().catch(() => {});
+  }
+  const token = session.access_token;
+  saveSession(null);
+  authFetch("logout", {}, token).catch(() => {});
+}
+
+$("signOutBtn").onclick = async () => {
+  await signOut();
+  $("accountStatus").textContent = "You're signed out. Notifications on this device are off.";
+};
+
 /* ---------- Open straight to a screen from a notification (e.g. #journal) ---------- */
 function routeFromHash() {
   const id = location.hash.slice(1);
@@ -1096,9 +1272,9 @@ setInterval(refreshIfNeeded, 60000);
   renderPrefs();
   loadToday();
   renderHome();
-  routeFromHash();
+  if (sessionFromLink()) show("settings"); else routeFromHash();
   await registerSW();
-  renderNotify();
+  renderAccount();
   // Keep the server's copy of the schedule current (time zone changes, travel, etc.)
   syncSchedule();
 })();
