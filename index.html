@@ -75,8 +75,11 @@ button { cursor:pointer; }
   min-height:100dvh;
   margin:auto;
   position:relative;
-  padding:30px 23px 110px;
+  padding:max(30px, calc(env(safe-area-inset-top) + 14px)) 23px 110px;
 }
+/* The iOS and Android apps add class="native" to <html>; some web-only wording and features are swapped there. */
+html:not(.native) .native-only, html.native .web-only { display:none !important; }
+.hint a { color:var(--ink); }
 .brand { font-size:32px;font-weight:650;letter-spacing:-2px; }
 .top { display:flex;align-items:center;justify-content:space-between; }
 .tag { font-size:11px;letter-spacing:1.7px;text-transform:uppercase;color:var(--soft); }
@@ -300,9 +303,12 @@ input[type="time"]:disabled { opacity:.45; }
   </div>
 
   <div class="section">
-    <p class="hint">
+    <p class="hint web-only">
       Prototype privacy: entries stay in this browser's local storage on this device only.
       This is not secure cloud journaling, so please avoid entering sensitive information during testing.
+    </p>
+    <p class="hint native-only">
+      Your reflections stay on this phone. They're never sent to us or anyone else.
     </p>
     <button type="button" class="btn quiet small" id="delete">Delete today's reflection</button>
   </div>
@@ -349,7 +355,7 @@ input[type="time"]:disabled { opacity:.45; }
     <p class="status" id="notifyStatus" aria-live="polite"></p>
   </div>
 
-  <div class="section">
+  <div class="section web-only">
     <h2>Membership preview</h2>
     <div class="plan">
       <strong>Essential · CAD $2.99/month</strong>
@@ -366,6 +372,7 @@ input[type="time"]:disabled { opacity:.45; }
     <h2>Your data</h2>
     <p class="hint">Everything lives on this device. You can clear it at any time.</p>
     <button type="button" class="btn quiet small" id="clearAll">Clear all amivo data</button>
+    <p class="hint"><a href="privacy.html">Privacy policy</a></p>
   </div>
 </section>
 
@@ -396,6 +403,15 @@ const CONFIG = {
   API_URL: "https://jeyotgsaoizqdnupsbcg.supabase.co/functions/v1/subscribe",
   VAPID_PUBLIC_KEY: ""  // optional: fetched from API_URL automatically when left empty
 };
+
+/* ---------- iOS and Android apps ---------- */
+// The store apps are this same page wrapped with Capacitor, which adds the plugins below.
+// On the website none of them exist, so NATIVE is false and everything works as before.
+const NATIVE = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+const LocalNotifications = NATIVE && window.capacitorLocalNotifications ? capacitorLocalNotifications.LocalNotifications : null;
+const NativeShare = NATIVE && window.capacitorShare ? capacitorShare.Share : null;
+const NativeFiles = NATIVE && window.capacitorFilesystem ? capacitorFilesystem.Filesystem : null;
+if (NATIVE) document.documentElement.classList.add("native");
 
 /* ---------- Content (loaded from messages.json, shared with the notification sender) ---------- */
 // The full year of messages is built in, so the app works even without messages.json.
@@ -652,14 +668,18 @@ function openShareSheet() {
     if (!href.startsWith("sms:") && !href.startsWith("mailto:")) { a.target = "_blank"; a.rel = "noopener"; }
     grid.appendChild(a);
   }
-  const save = document.createElement("button");
-  save.type = "button"; save.textContent = "Save image"; save.onclick = saveImage;
   const copy = document.createElement("button");
   copy.type = "button"; copy.textContent = "Copy text"; copy.onclick = copyText;
-  grid.append(save, copy);
+  // Downloads don't work inside the app; its share sheet has "Save Image" instead.
+  if (!NATIVE) {
+    const save = document.createElement("button");
+    save.type = "button"; save.textContent = "Save image"; save.onclick = saveImage;
+    grid.append(save);
+  }
+  grid.append(copy);
 
   // Phones with a share sheet get one button that reaches every installed app.
-  $("shareImage").hidden = !navigator.share;
+  $("shareImage").hidden = !navigator.share && !NativeShare;
   $("sheetStatus").textContent = "";
   $("shareSheet").hidden = false;
   document.body.style.overflow = "hidden";
@@ -677,7 +697,28 @@ async function imageFile() {
   return new File([shareBlob], `amivo-${dateKey()}.png`, { type: "image/png" });
 }
 
+function blobToBase64(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+
+// In the app: save the picture to the app's cache, then hand it to the phone's share sheet.
+async function shareImageNative() {
+  const file = await imageFile();
+  const { uri } = await NativeFiles.writeFile({ path: file.name, data: await blobToBase64(file), directory: "CACHE" });
+  await NativeShare.share({ text: shareText() + "\n" + SHARE_URL, files: [uri] });
+}
+
 $("shareImage").onclick = async () => {
+  if (NativeShare && NativeFiles) {
+    try { await shareImageNative(); $("sheetStatus").textContent = ""; }
+    catch (e) { if (!/cancel/i.test(e && e.message || "")) $("sheetStatus").textContent = "Couldn't open sharing. Try Copy text instead."; }
+    return;
+  }
   try {
     const file = await imageFile();
     const data = { files: [file], text: shareText() + "\n" + SHARE_URL };
@@ -877,6 +918,7 @@ $("clearAll").onclick = async () => {
     if (CONFIG.API_URL) await api({ action: "unsubscribe", endpoint: sub.endpoint }).catch(() => {});
     await sub.unsubscribe().catch(() => {});
   }
+  if (LocalNotifications) await cancelNativeReminders().catch(() => {});
   store.keys().filter(k => k.startsWith("amivo_")).forEach(k => store.remove(k));
   cat = "general";
   Object.assign(prefs, { morningOn: true, morningTime: "07:30", eveningOn: true, eveningTime: "18:00" });
@@ -945,8 +987,9 @@ function schedulePayload(sub) {
   };
 }
 
-// Sends the latest times and style to the server. Returns true if it did.
+// Sends the latest times and style to the server (or, in the app, reschedules on the phone). Returns true if it did.
 async function syncSchedule() {
+  if (LocalNotifications) return scheduleNativeReminders().catch(() => false);
   if (!backendReady()) return false;
   const sub = await currentSubscription();
   if (!sub) return false;
@@ -967,6 +1010,45 @@ function describeSchedule() {
   return "You'll get " + parts.join(" and ") + ".";
 }
 
+/* In the iOS and Android apps the phone schedules the reminders itself (local notifications), using the
+   same year of built-in messages, so they arrive even offline and no push server is involved. */
+const NATIVE_DAYS_AHEAD = 30; // iOS keeps at most 64 waiting notifications; 30 days of two stays under that.
+const nativeNotifyOn = () => store.get("amivo_native_notify", "0") === "1";
+
+async function nativePermission() {
+  try { return (await LocalNotifications.checkPermissions()).display; } catch (e) { return "denied"; }
+}
+
+async function cancelNativeReminders() {
+  const { notifications } = await LocalNotifications.getPending();
+  if (notifications.length) await LocalNotifications.cancel({ notifications: notifications.map(n => ({ id: n.id })) });
+}
+
+function atTime(day, hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date(day); d.setHours(h, m, 0, 0);
+  return d;
+}
+
+// Replaces whatever is waiting with the next 30 days of reminders. Returns true if reminders are on.
+async function scheduleNativeReminders() {
+  await cancelNativeReminders();
+  if (!nativeNotifyOn() || await nativePermission() !== "granted") return false;
+  const now = new Date(), list = messages[cat], batch = [];
+  // Not exact alarms: Google Play only allows those for alarm-clock and calendar apps, and a few minutes either way is fine here.
+  const remind = (id, at, title, body, url) => {
+    if (at > now) batch.push({ id, title, body, schedule: { at, allowWhileIdle: true }, isExactNotification: false, extra: { url } });
+  };
+  for (let i = 0; i < NATIVE_DAYS_AHEAD; i++) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const n = dayNumber(day);
+    if (prefs.morningOn) remind(n * 10 + 1, atTime(day, prefs.morningTime), "Good morning", list[n % list.length], "#home");
+    if (prefs.eveningOn) remind(n * 10 + 2, atTime(day, prefs.eveningTime), "Good evening", eveningPrompts[n % eveningPrompts.length], "#journal");
+  }
+  if (batch.length) await LocalNotifications.schedule({ notifications: batch });
+  return true;
+}
+
 function setNotifyStatus(msg) { $("notifyStatus").textContent = msg; }
 
 function showNotice(html) {
@@ -981,6 +1063,16 @@ async function renderNotify() {
   btn.hidden = false;
   btn.disabled = false;
 
+  if (LocalNotifications) {
+    const permission = await nativePermission();
+    if (permission === "denied" && nativeNotifyOn()) {
+      showNotice("Notifications are turned off for amivo. Allow them in your phone's Settings, then come back here.");
+      btn.hidden = true;
+      return;
+    }
+    setNotifyButton(nativeNotifyOn() && permission === "granted");
+    return;
+  }
   if (isIOS && !isStandalone) {
     showNotice("On iPhone, notifications work once amivo is on your Home Screen. In Safari, tap the <b>Share</b> button, choose <b>Add to Home Screen</b>, then open amivo from your Home Screen and come back here.");
     btn.hidden = true;
@@ -997,17 +1089,42 @@ async function renderNotify() {
     return;
   }
   const sub = await currentSubscription();
-  const on = !!sub && Notification.permission === "granted";
+  setNotifyButton(!!sub && Notification.permission === "granted");
+}
+
+function setNotifyButton(on) {
+  const btn = $("notifyBtn");
   btn.dataset.state = on ? "on" : "off";
   btn.textContent = on ? "Turn off notifications" : "Turn on notifications";
   btn.className = on ? "btn secondary small" : "btn small";
   $("previewBtn").hidden = !on;
 }
 
+async function toggleNativeNotify(turnOff) {
+  if (turnOff) {
+    store.set("amivo_native_notify", "0");
+    await cancelNativeReminders();
+    setNotifyStatus("Notifications are off. You can turn them back on anytime.");
+    return;
+  }
+  const { display } = await LocalNotifications.requestPermissions();
+  if (display !== "granted") {
+    setNotifyStatus("No problem. You can turn them on anytime in your phone's Settings.");
+    return;
+  }
+  store.set("amivo_native_notify", "1");
+  await scheduleNativeReminders();
+  setNotifyStatus("You're all set. " + describeSchedule());
+}
+
 $("notifyBtn").onclick = async () => {
   const btn = $("notifyBtn");
   btn.disabled = true;
   try {
+    if (LocalNotifications) {
+      await toggleNativeNotify(btn.dataset.state === "on");
+      return;
+    }
     if (btn.dataset.state === "on") {
       const sub = await currentSubscription();
       if (sub) {
@@ -1051,9 +1168,20 @@ $("notifyBtn").onclick = async () => {
 };
 
 $("previewBtn").onclick = async () => {
+  const title = currentPeriod === "evening" ? "Good evening" : currentPeriod === "afternoon" ? "Good afternoon" : "Good morning";
+  if (LocalNotifications) {
+    try {
+      // No schedule means the phone shows it right away.
+      await LocalNotifications.schedule({ notifications: [{ id: 1, title, body: $("message").textContent, extra: { url: "#home" } }] });
+      setNotifyStatus("Sent a preview to this phone.");
+    } catch (e) {
+      setNotifyStatus("Couldn't show a preview here.");
+    }
+    return;
+  }
   try {
     const reg = swReg || await navigator.serviceWorker.ready;
-    await reg.showNotification(currentPeriod === "evening" ? "Good evening" : currentPeriod === "afternoon" ? "Good afternoon" : "Good morning", {
+    await reg.showNotification(title, {
       body: $("message").textContent,
       icon: "icons/icon-192.png",
       tag: "amivo-preview"
@@ -1070,6 +1198,13 @@ function routeFromHash() {
   if (["home", "journal", "settings"].includes(id)) show(id);
 }
 window.addEventListener("hashchange", routeFromHash);
+// In the app, tapping a reminder opens the matching screen (the evening one opens the journal).
+if (LocalNotifications) {
+  LocalNotifications.addListener("localNotificationActionPerformed", action => {
+    const url = action.notification && action.notification.extra && action.notification.extra.url;
+    if (url) { location.hash = url; routeFromHash(); }
+  });
+}
 
 /* ---------- Keep the day fresh if the app stays open ---------- */
 function refreshIfNeeded() {
@@ -1080,6 +1215,8 @@ function refreshIfNeeded() {
   if (newDay) {
     loadToday();
     renderHistory();
+    // In the app, keep 30 days of reminders queued up even if amivo is never fully closed.
+    if (LocalNotifications) syncSchedule();
   }
   if (newDay || period !== currentPeriod) {
     currentPeriod = period;
@@ -1097,7 +1234,7 @@ setInterval(refreshIfNeeded, 60000);
   loadToday();
   renderHome();
   routeFromHash();
-  await registerSW();
+  if (!NATIVE) await registerSW();
   renderNotify();
   // Keep the server's copy of the schedule current (time zone changes, travel, etc.)
   syncSchedule();
