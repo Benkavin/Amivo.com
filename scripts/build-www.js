@@ -6,7 +6,7 @@ const path = require("path");
 
 const root = path.join(__dirname, "..");
 const out = path.join(root, "www");
-const FILES = ["index.html", "privacy.html", "messages.json", "manifest.webmanifest", "og-image.png"];
+const FILES = ["index.html", "privacy.html", "messages.json", "series.json", "manifest.webmanifest", "og-image.png"];
 const DIRS = ["icons"];
 const NATIVE_SCRIPTS = {
   "capacitor.js": "@capacitor/core/dist/capacitor.js",

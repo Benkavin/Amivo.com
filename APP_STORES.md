@@ -65,16 +65,25 @@ python3 scripts/make-app-icons.py && npx @capacitor/assets generate --iconBackgr
    privacy policy URL `https://www.amivo.ca/privacy.html`, then submit for review.
 4. Bump the version and build number in Xcode for every new upload.
 
+## What the apps include (v1)
+
+- **Every feature is free in the apps.** Premium is sold on the website with Stripe, but Apple and Google require their
+  own billing for digital subscriptions inside apps, so the apps unlock everything (`isPremium()` is true there) and
+  never mention Premium, prices or Stripe. Store billing (for example with RevenueCat) can come in an update.
+- **No ads in the apps.** AdSense isn't allowed in native apps. If the free plan gets ads in the apps later, use AdMob,
+  and on iOS show Apple's tracking prompt (App Tracking Transparency) and update the privacy labels.
+- **No sign-in in the apps.** Accounts (email, username, Google, Apple) are website-only. That keeps the apps clear of
+  two store rules: an app that creates accounts must let people delete them inside the app, and an iOS app that offers
+  Google sign-in must also offer Sign in with Apple. Google also blocks its sign-in page inside app web views, so sign-in
+  in the apps would need native sign-in plugins.
+- **Journal export** goes to the phone's share sheet (Save to Files, Mail, and so on), because downloads don't work in apps.
+
 ## Store rules to keep in mind
 
-- **Payments.** Premium (PR #3) uses Stripe. Inside the iOS app, Apple requires its own in-app purchase for digital
-  subscriptions, and Google Play requires Play Billing. Stripe links and prices must not appear in the apps.
-  Plan: ship v1 free, then add store billing (for example with RevenueCat) as a follow-up.
-- **Ads.** AdSense isn't allowed in native apps; use Google AdMob if the free plan shows ads in the apps.
 - **Thin wrappers (Apple 4.2).** Apple rejects apps that are just a website in a frame. Local notifications,
   the native share sheet and full offline use are what make amivo a real app; mention them in the review notes.
-- **Accounts.** If the email sign-up (PR #2) becomes an account, both stores require a way to delete it from inside the app,
-  and the privacy policy must mention the email address.
-- **Daily messages from the server.** The `daily` Supabase function only accepts requests from amivo.ca, so the apps
-  currently show the built-in message for each day. Adding `capacitor://localhost` and `https://localhost` to its
-  `ALLOWED_ORIGINS` would let the apps show the freshly written messages too.
+- **Privacy answers.** The apps collect nothing: App Store privacy label "Data Not Collected", and on Google Play's data
+  safety form, no data collected or shared.
+- **Daily messages from the server.** If the `daily` Supabase function only accepts requests from amivo.ca, the apps
+  show the built-in message for each day. Adding `capacitor://localhost` and `https://localhost` to its
+  `ALLOWED_ORIGINS` lets the apps show the freshly written messages too.
