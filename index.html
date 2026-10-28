@@ -2351,6 +2351,8 @@ let premium = readJSON(PREMIUM_KEY, null);
 let billingReady = false;
 
 function isPremium() {
+  // The phone apps can't sell Premium yet (that needs App Store / Google Play billing), so every feature is open there.
+  if (NATIVE) return true;
   if (!session || !premium) return false;
   if (premium.plan === "lifetime") return premium.status === "active";
   if (!["active", "trialing"].includes(premium.status)) return false;
@@ -2416,6 +2418,7 @@ function niceDate(iso) {
 }
 
 function renderPremium() {
+  if (NATIVE) return; // no plans or billing in the apps
   const on = isPremium();
   const box = $("premiumStatus");
   $("premiumPlans").hidden = on;
@@ -2456,7 +2459,7 @@ function renderPremium() {
 function renderTrialBanner() {
   const el = $("trialBanner");
   const p = premium;
-  const show = isPremium() && p.status === "trialing" && !p.cancel_at_period_end && p.trial_end &&
+  const show = isPremium() && !!p && p.status === "trialing" && !p.cancel_at_period_end && p.trial_end &&
     new Date(p.trial_end).getTime() - Date.now() < 3 * 86400000 &&
     store.get("amivo_trial_dismissed") !== dateKey();
   el.hidden = !show;
@@ -2653,7 +2656,13 @@ function allEntries() {
     .map(key => Object.assign({ date: key }, readEntry(key))).filter(e => e.savedAt || e.feeling);
 }
 
-function download(name, type, data) {
+// In the apps a download link does nothing, so the file goes to the phone's share sheet (Save to Files, Mail, and so on).
+async function download(name, type, data) {
+  if (NativeShare && NativeFiles) {
+    const { uri } = await NativeFiles.writeFile({ path: name, data: await blobToBase64(new Blob([data], { type })), directory: "CACHE" });
+    await NativeShare.share({ title: name, files: [uri] }).catch(() => {}); // closing the sheet is fine
+    return;
+  }
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([data], { type }));
   a.download = name;
@@ -2661,7 +2670,7 @@ function download(name, type, data) {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
-function exportJournal(kind) {
+async function exportJournal(kind) {
   if (!isPremium()) return offerPremium();
   if (pinSet() && !journalUnlocked) {
     $("privacyStatus").textContent = "Open your journal with the passcode first, then download it.";
@@ -2670,7 +2679,7 @@ function exportJournal(kind) {
   const entries = allEntries();
   if (!entries.length) { $("privacyStatus").textContent = "There are no reflections to download yet."; return; }
   if (kind === "pdf") {
-    download(`amivo-journal-${dateKey()}.pdf`, "application/pdf", journalPdf(entries));
+    await download(`amivo-journal-${dateKey()}.pdf`, "application/pdf", journalPdf(entries));
   } else {
     const text = "amivo journal\n\n" + entries.map(e => [
       prettyDate(parseKey(e.date), true),
@@ -2679,9 +2688,9 @@ function exportJournal(kind) {
       e.gratitude ? "Grateful for: " + e.gratitude : "",
       e.reflection ? (e.prompt || "Reflection") + "\n" + e.reflection : ""
     ].filter(Boolean).join("\n")).join("\n\n----------\n\n") + "\n";
-    download(`amivo-journal-${dateKey()}.txt`, "text/plain", text);
+    await download(`amivo-journal-${dateKey()}.txt`, "text/plain", text);
   }
-  $("privacyStatus").textContent = `Downloaded ${entries.length} ${entries.length === 1 ? "reflection" : "reflections"}.`;
+  $("privacyStatus").textContent = `${NATIVE ? "Exported" : "Downloaded"} ${entries.length} ${entries.length === 1 ? "reflection" : "reflections"}.`;
 }
 $("exportTxt").onclick = () => exportJournal("txt");
 $("exportPdf").onclick = () => exportJournal("pdf");
