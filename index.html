@@ -21,6 +21,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<!-- AdSense: once approved, add your publisher id here too, e.g. <meta name="google-adsense-account" content="ca-pub-XXXXXXXXXXXXXXXX"> (see PREMIUM_SETUP.md) -->
 <style>
 :root {
   --bg:#f8f6ef;
@@ -135,7 +136,7 @@ html:not(.native) .native-only, html.native .web-only { display:none !important;
 .nav {
   position:fixed;bottom:0;left:50%;transform:translateX(-50%);
   width:min(470px,100%);display:grid;
-  grid-template-columns:repeat(3,1fr);
+  grid-template-columns:repeat(4,1fr);
   padding:13px 12px max(15px,env(safe-area-inset-bottom));
   background:var(--nav);border-top:1px solid var(--line);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
@@ -236,6 +237,62 @@ input[type="time"]:disabled { opacity:.45; }
   font-size:14px;line-height:1.6;
 }
 .notice b { color:var(--ink); }
+.notice .row { margin-top:10px; }
+.premium-tag {
+  display:inline-block;margin-left:6px;padding:2px 8px;border-radius:50px;
+  background:var(--gold);color:#2b2414;font-size:10px;font-weight:700;
+  letter-spacing:.6px;text-transform:uppercase;vertical-align:middle;
+}
+body.is-premium .premium-tag { display:none; }
+.link { border:0;background:none;padding:0;color:var(--ink);text-decoration:underline;font-weight:600; }
+.fav[aria-pressed="true"] { background:var(--tint);border-color:var(--accent); }
+.series {
+  margin-top:18px;padding:18px 20px;border-radius:20px;
+  border:1px solid var(--line);border-left:4px solid var(--gold);background:var(--card);
+}
+.series .pill { background:transparent;padding:0;color:var(--gold);font-weight:700;letter-spacing:.4px; }
+.series p { margin:10px 0 0;line-height:1.6; }
+.series blockquote { margin:10px 0 0;font-family:Georgia,serif;font-size:17px;line-height:1.55;color:var(--soft); }
+.series cite { display:block;margin-top:6px;font-style:normal;font-size:12px;color:var(--muted); }
+.echo { font-size:13px;line-height:1.6;color:var(--muted);margin:0 0 8px;font-style:italic; }
+.ad-slot { margin-top:28px;min-height:0; }
+.ad-slot .ad-label { display:block;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px; }
+.ad-slot .ad-foot { display:flex;justify-content:flex-end;margin-top:6px;font-size:12px; }
+.house-ad {
+  padding:18px 20px;border-radius:20px;background:var(--tint);color:var(--tint-ink);
+  font-size:14px;line-height:1.6;
+}
+.house-ad b { color:var(--ink); }
+.plans { display:grid;gap:10px;margin-top:12px; }
+button.plan {
+  width:100%;text-align:left;background:var(--card);color:var(--ink);position:relative;margin:0;
+}
+button.plan:disabled { opacity:.55;cursor:default; }
+button.plan span { display:block;color:var(--soft);font-size:13px; }
+button.plan em {
+  position:absolute;top:12px;right:12px;font-style:normal;font-size:11px;font-weight:700;
+  background:var(--gold);color:#2b2414;border-radius:50px;padding:3px 9px;
+}
+.plan.best { border-color:var(--gold);border-width:2px; }
+.perks { margin:10px 0 0;padding-left:20px;font-size:14px;line-height:1.8;color:var(--soft); }
+.locked {
+  margin-top:12px;padding:18px 20px;border-radius:18px;border:1px dashed var(--field-line);
+  font-size:14px;line-height:1.6;color:var(--soft);
+}
+.locked .btn { margin-top:12px; }
+.saved-item {
+  border:1px solid var(--line);border-radius:15px;background:var(--card);
+  padding:14px 16px;margin-top:10px;font-size:15px;line-height:1.6;
+}
+.saved-item small { display:block;margin-top:6px;font-size:12px;color:var(--muted); }
+.saved-item .row { margin-top:8px; }
+.recap { margin-top:12px;padding:18px 20px;border-radius:18px;background:var(--tint);color:var(--tint-ink);font-size:14px;line-height:1.7; }
+.recap b { color:var(--ink); }
+.recap ul { margin:6px 0 0;padding-left:18px; }
+.lock-screen { text-align:center;padding-top:30px; }
+.lock-screen input { max-width:220px;margin:18px auto 0;display:block;text-align:center;font-size:22px;letter-spacing:6px; }
+.pin-row { display:flex;gap:10px;margin-top:10px; }
+.pin-row input { flex:1; }
 @media (prefers-reduced-motion:reduce) {
   .screen.active { animation:none; }
 }
@@ -258,6 +315,8 @@ input[type="time"]:disabled { opacity:.45; }
   <h1 class="headline" id="welcomeHeadline">A little light<br>for today.</h1>
   <p class="sub">Take what you need. Go at your own pace.</p>
 
+  <div class="notice" id="trialBanner" hidden></div>
+
   <div class="card">
     <div class="card-top">
       <span class="pill" id="categoryPill">Everyday encouragement</span>
@@ -265,22 +324,62 @@ input[type="time"]:disabled { opacity:.45; }
     </div>
     <p class="quote" id="message"></p>
 
-    <div class="actions single">
+    <div class="actions">
+      <button type="button" class="btn secondary fav" id="favBtn" aria-pressed="false">♡ Save</button>
       <button type="button" class="btn secondary" id="share">Share</button>
     </div>
     <div class="status" id="shareStatus" aria-live="polite"></div>
   </div>
 
+  <div class="series" id="seriesCard" hidden>
+    <span class="pill" id="seriesLabel"></span>
+    <p id="seriesText"></p>
+    <blockquote id="seriesQuote"></blockquote>
+    <cite id="seriesRef"></cite>
+  </div>
+
   <div class="section">
     <h2 id="eveningTitle">Tonight, come back to yourself.</h2>
+    <p class="echo" id="eveningEcho" hidden></p>
     <p class="prompt" id="eveningPrompt"></p>
     <button type="button" class="btn secondary small" id="reflectBtn">Take a moment to reflect →</button>
     <div class="streak" id="streak" hidden></div>
   </div>
+
+  <div class="ad-slot" data-ad="home" hidden></div>
+</section>
+
+<!-- SAVED: favourites and past messages -->
+<section id="saved" class="screen" aria-labelledby="savedHeadline">
+  <div class="eyebrow">Keep what helps</div>
+  <h1 class="headline" id="savedHeadline">Your saved<br>messages.</h1>
+  <p class="sub">Favourites you've kept, and the messages from days you missed.</p>
+
+  <div class="section">
+    <h2>Favourites <span class="premium-tag">Premium</span></h2>
+    <div id="favList"></div>
+  </div>
+
+  <div class="section">
+    <h2>Past messages <span class="premium-tag">Premium</span></h2>
+    <div id="archiveList"></div>
+  </div>
+
+  <div class="ad-slot" data-ad="saved" hidden></div>
 </section>
 
 <!-- JOURNAL -->
 <section id="journal" class="screen" aria-labelledby="journalHeadline">
+  <form class="lock-screen" id="lockScreen" hidden novalidate>
+    <div class="eyebrow">Your private space</div>
+    <h1 class="headline">Your journal<br>is locked.</h1>
+    <p class="sub">Enter your passcode to open it.</p>
+    <input id="unlockPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" aria-label="Passcode">
+    <button type="submit" class="btn full">Unlock</button>
+    <p class="status" id="unlockStatus" aria-live="polite"></p>
+    <button type="button" class="btn quiet small" id="forgotPin">Forgot your passcode?</button>
+  </form>
+  <div id="journalBody">
   <div class="eyebrow" id="journalDate">Your private space</div>
   <h1 class="headline" id="journalHeadline">How was<br>your day?</h1>
   <p class="sub">No perfect answers. Just a moment to reflect.</p>
@@ -298,19 +397,25 @@ input[type="time"]:disabled { opacity:.45; }
   <p class="status" id="saveStatus" aria-live="polite"></p>
 
   <div class="section">
+    <h2>Your week <span class="premium-tag">Premium</span></h2>
+    <div id="recap"></div>
+  </div>
+
+  <div class="section">
     <h2>Past reflections</h2>
     <div class="history" id="history"></div>
   </div>
 
   <div class="section">
     <p class="hint web-only">
-      Prototype privacy: entries stay in this browser's local storage on this device only.
-      This is not secure cloud journaling, so please avoid entering sensitive information during testing.
+      Your reflections stay on this device only. They aren't uploaded anywhere.
+      Premium adds a passcode and lets you download a copy.
     </p>
     <p class="hint native-only">
       Your reflections stay on this phone. They're never sent to us or anyone else.
     </p>
     <button type="button" class="btn quiet small" id="delete">Delete today's reflection</button>
+  </div>
   </div>
 </section>
 
@@ -328,6 +433,16 @@ input[type="time"]:disabled { opacity:.45; }
     <option value="islamic">Islamic encouragement</option>
     <option value="spiritual">Spiritual reflection</option>
   </select>
+
+  <label for="seriesPref">Faith series <span class="premium-tag">Premium</span></label>
+  <select id="seriesPref">
+    <option value="auto">Match my message style</option>
+    <option value="christian">Advent and Lent</option>
+    <option value="islamic">Ramadan</option>
+    <option value="all">All seasons</option>
+    <option value="off">Off</option>
+  </select>
+  <p class="hint">Daily messages with scripture and hadith references during Advent, Lent and Ramadan.</p>
 
   <p class="status" id="settingsStatus" aria-live="polite"></p>
 
@@ -359,7 +474,7 @@ input[type="time"]:disabled { opacity:.45; }
 
   <div class="section">
     <h2>Daily notifications</h2>
-    <p class="hint">Choose when amivo shows up on your phone. Times follow your phone's time zone.</p>
+    <p class="hint" id="timesHint">Choose when amivo shows up on your phone. Times follow your phone's time zone.</p>
 
     <div class="switch-row">
       <label for="morningOn">Morning message</label>
@@ -381,17 +496,44 @@ input[type="time"]:disabled { opacity:.45; }
     <p class="status" id="notifyStatus" aria-live="polite"></p>
   </div>
 
-  <div class="section web-only">
-    <h2>Membership preview</h2>
-    <div class="plan">
-      <strong>Essential · CAD $2.99/month</strong>
-      One daily morning message.
+  <div class="section web-only" id="premium">
+    <h2>amivo Premium</h2>
+    <div class="notice" id="premiumStatus" hidden></div>
+    <div id="premiumPlans">
+      <p class="hint">The free plan keeps your daily message, evening question and journal, with ads. Premium adds:</p>
+      <ul class="perks">
+        <li>No ads</li>
+        <li>Favourites and every past message</li>
+        <li>Your own morning and evening times</li>
+        <li>Advent, Lent and Ramadan series with references</li>
+        <li>Evening questions that follow your morning message, and a weekly recap</li>
+        <li>Journal passcode, download, and your full history</li>
+      </ul>
+      <div class="plans">
+        <button type="button" class="btn plan best" data-plan="yearly"><em>Best value</em><strong>Yearly · CAD $39.99</strong><span>About $3.33 a month. Save 33%. 7-day free trial.</span></button>
+        <button type="button" class="btn plan" data-plan="monthly"><strong>Monthly · CAD $4.99</strong><span>7-day free trial. Cancel anytime.</span></button>
+        <button type="button" class="btn plan" data-plan="lifetime"><em>Launch deal</em><strong>Lifetime · CAD $79.99</strong><span>Pay once, keep Premium for good.</span></button>
+      </div>
+      <p class="hint" id="trialHint">We'll remind you before your trial ends, and you can cancel in one tap. You won't be charged if you cancel before the trial is over.</p>
     </div>
-    <div class="plan">
-      <strong>Premium · CAD $4.99/month</strong>
-      Morning and evening messages, plus private journaling with history.
+    <p class="status" id="premiumMsg" aria-live="polite"></p>
+  </div>
+
+  <div class="section" id="privacy">
+    <h2>Journal privacy <span class="premium-tag">Premium</span></h2>
+    <p class="hint" id="pinHint">Add a passcode so the journal stays closed when someone else picks up your phone. It hides your reflections; it doesn't encrypt them.</p>
+    <form id="pinForm" novalidate>
+      <div class="pin-row">
+        <input id="newPin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="4 to 8 digits" aria-label="New passcode">
+        <button type="submit" class="btn small" id="pinBtn">Set passcode</button>
+      </div>
+    </form>
+    <div class="row">
+      <button type="button" class="btn quiet small" id="removePin" hidden>Remove passcode</button>
+      <button type="button" class="btn secondary small" id="exportTxt">Download journal (.txt)</button>
+      <button type="button" class="btn quiet small" id="exportJson">Download (.json)</button>
     </div>
-    <p class="hint">Proposed 30-day free trial. No billing or trial starts in this demo.</p>
+    <p class="status" id="privacyStatus" aria-live="polite"></p>
   </div>
 
   <div class="section">
@@ -405,6 +547,7 @@ input[type="time"]:disabled { opacity:.45; }
 <nav class="nav" aria-label="Main navigation">
   <button type="button" data-nav="home" aria-current="page">⌂ Home</button>
   <button type="button" data-nav="journal">✎ Journal</button>
+  <button type="button" data-nav="saved">♡ Saved</button>
   <button type="button" data-nav="settings">⚙ Settings</button>
 </nav>
 </main>
@@ -430,7 +573,12 @@ const CONFIG = {
   VAPID_PUBLIC_KEY: "",  // optional: fetched from API_URL automatically when left empty
   // Sign-up uses Supabase Auth. The publishable key is safe to have in the page.
   SUPABASE_URL: "https://jeyotgsaoizqdnupsbcg.supabase.co",
-  SUPABASE_KEY: "sb_publishable_vMETCEvzLSi47fasv92olw_IxP8KLm9"
+  SUPABASE_KEY: "sb_publishable_vMETCEvzLSi47fasv92olw_IxP8KLm9",
+  // Premium checkout and status (Stripe keys live in Supabase, never in this page).
+  BILLING_URL: "https://jeyotgsaoizqdnupsbcg.supabase.co/functions/v1/billing",
+  // Ads for the free plan: paste your AdSense publisher id ("ca-pub-...") and ad unit id once approved.
+  ADSENSE_CLIENT: "",
+  ADSENSE_SLOT: ""
 };
 
 /* ---------- iOS and Android apps ---------- */
@@ -459,6 +607,15 @@ async function loadContent() {
       eveningPrompts = data.eveningPrompts;
     }
   } catch (e) { /* offline with no cache: keep the built-in fallback */ }
+}
+
+// Advent, Lent and Ramadan series for Premium, loaded from series.json.
+let SERIES = null;
+async function loadSeries() {
+  try {
+    const res = await fetch("series.json", { cache: "no-cache" });
+    if (res.ok) SERIES = await res.json();
+  } catch (e) { /* offline: no series today */ }
 }
 
 const FEELINGS = ["Peaceful", "Hopeful", "Okay", "Tired", "Overwhelmed"];
@@ -516,8 +673,10 @@ function show(id) {
     if (b.dataset.nav === id) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
   });
-  if (id === "journal") renderHistory();
+  if (id === "journal") { renderLock(); renderHistory(); renderRecap(); }
+  if (id === "saved") renderSaved();
   window.scrollTo(0, 0);
+  fillAds();
 }
 document.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => show(b.dataset.nav)));
 $("reflectBtn").addEventListener("click", () => show("journal"));
@@ -530,6 +689,7 @@ function renderHome() {
   currentMessageIndex = day % list.length;
 
   $("message").textContent = list[currentMessageIndex];
+  recordSeen(dateKey(now), cat, list[currentMessageIndex]);
   $("categoryPill").textContent = STYLE_NAMES[cat];
   $("todayLabel").textContent = now.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
@@ -541,9 +701,13 @@ function renderHome() {
     "Good afternoon.<br>Take a moment for you.";
 
   $("eveningTitle").textContent = period === "evening" ? "Come back to yourself." : "Tonight, come back to yourself.";
-  $("eveningPrompt").textContent = eveningPrompts[day % eveningPrompts.length];
+  freshPrompt = null;
+  renderEvening();
 
   loadDailyMessage(dateKey(now), cat);
+  renderFav();
+  renderSeries();
+  renderTrialBanner();
 
   const hasToday = !!readEntry(dateKey(now));
   $("reflectBtn").textContent = hasToday ? "✓ View today's reflection" : "Take a moment to reflect →";
@@ -556,11 +720,13 @@ async function loadDailyMessage(key, style) {
   const cacheKey = `amivo_daily_${key}_${style}`;
   const apply = d => {
     if (dateKey() !== key || cat !== style) return; // the day or style changed meanwhile
-    if (d.message) $("message").textContent = d.message;
-    if (d.prompt) {
-      $("eveningPrompt").textContent = d.prompt;
-      $("reflectionLabel").textContent = d.prompt;
+    if (d.message) {
+      $("message").textContent = d.message;
+      recordSeen(key, style, d.message);
+      renderFav();
     }
+    if (d.prompt) freshPrompt = d.prompt;
+    renderEvening();
   };
   // Tidy up older days' saved messages.
   store.keys().filter(k => k.startsWith("amivo_daily_") && !k.startsWith(`amivo_daily_${key}_`)).forEach(k => store.remove(k));
@@ -577,6 +743,206 @@ async function loadDailyMessage(key, style) {
     store.set(cacheKey, JSON.stringify({ message: d.message, prompt: d.prompt }));
     apply(d);
   } catch (e) { /* offline: keep what's showing */ }
+}
+
+/* ---------- Evening question ---------- */
+let freshPrompt = null;
+// Premium: the evening question follows on from that morning's message.
+const TIED_QUESTIONS = [
+  "Where did this morning's message show up in your day?",
+  "Was there a moment today when this morning's words felt true?",
+  "How did this morning's message sit with you as the day went on?",
+  "After living today, what would you add to this morning's message?",
+  "Who could have used this morning's message today, including you?"
+];
+function eveningQuestion() {
+  const day = dayNumber();
+  if (isPremium()) return TIED_QUESTIONS[day % TIED_QUESTIONS.length];
+  return freshPrompt || eveningPrompts[day % eveningPrompts.length];
+}
+function renderEvening() {
+  const q = eveningQuestion();
+  $("eveningPrompt").textContent = q;
+  $("reflectionLabel").textContent = q;
+  const echo = $("eveningEcho");
+  echo.hidden = !isPremium();
+  if (isPremium()) echo.textContent = `This morning: “${$("message").textContent.trim()}”`;
+}
+
+/* ---------- Seen messages and favourites ---------- */
+const SEEN_KEY = "amivo_seen";
+const FAVS_KEY = "amivo_favs";
+function readJSON(key, fallback) {
+  try { const v = JSON.parse(store.get(key) || "null"); return v === null ? fallback : v; } catch (e) { return fallback; }
+}
+// Remembers each day's message so the archive shows what was really on screen.
+function recordSeen(key, style, text) {
+  const seen = readJSON(SEEN_KEY, {});
+  if (seen[key] && seen[key].s === style && seen[key].t === text) return;
+  seen[key] = { t: text, s: style };
+  const keys = Object.keys(seen).sort();
+  keys.slice(0, Math.max(0, keys.length - 400)).forEach(k => delete seen[k]);
+  store.set(SEEN_KEY, JSON.stringify(seen));
+}
+function favs() { return readJSON(FAVS_KEY, []); }
+function isFav(text) { return favs().some(f => f.t === text); }
+function toggleFav(text, style, key) {
+  const list = favs();
+  const i = list.findIndex(f => f.t === text);
+  if (i >= 0) list.splice(i, 1); else list.unshift({ t: text, s: style, d: key });
+  store.set(FAVS_KEY, JSON.stringify(list));
+  return i < 0;
+}
+function renderFav() {
+  const on = isPremium() && isFav($("message").textContent.trim());
+  $("favBtn").setAttribute("aria-pressed", String(on));
+  $("favBtn").textContent = on ? "♥ Saved" : "♡ Save";
+}
+$("favBtn").onclick = () => {
+  if (!isPremium()) {
+    setShareStatus("Saving favourites is part of Premium.");
+    return NATIVE ? undefined : offerPremium();
+  }
+  const added = toggleFav($("message").textContent.trim(), cat, dateKey());
+  renderFav();
+  setShareStatus(added ? "Saved to your favourites." : "Removed from your favourites.");
+};
+
+function lockedCard(text) {
+  const box = document.createElement("div");
+  box.className = "locked";
+  box.textContent = text + " ";
+  if (NATIVE) { box.textContent += "It's part of amivo Premium."; return box; }
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "btn small"; btn.textContent = "See Premium";
+  btn.onclick = offerPremium;
+  box.append(document.createElement("br"), btn);
+  return box;
+}
+
+function savedItem(text, meta, actions) {
+  const item = document.createElement("div");
+  item.className = "saved-item";
+  item.textContent = text;
+  const small = document.createElement("small");
+  small.textContent = meta;
+  item.appendChild(small);
+  if (actions.length) {
+    const row = document.createElement("div");
+    row.className = "row";
+    actions.forEach(([label, fn]) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "btn quiet small"; b.textContent = label; b.onclick = fn;
+      row.appendChild(b);
+    });
+    item.appendChild(row);
+  }
+  return item;
+}
+
+function renderSaved() {
+  const favWrap = $("favList"), archWrap = $("archiveList");
+  favWrap.innerHTML = ""; archWrap.innerHTML = "";
+  if (!isPremium()) {
+    favWrap.appendChild(lockedCard("Tap ♡ Save on any message to keep it here."));
+    archWrap.appendChild(lockedCard("Catch up on the last 30 days of messages, in any style."));
+    return;
+  }
+  const list = favs();
+  if (!list.length) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = "Tap ♡ Save on a message you love and it'll wait for you here.";
+    favWrap.appendChild(p);
+  }
+  list.forEach(f => favWrap.appendChild(savedItem(f.t,
+    (STYLE_NAMES[f.s] || "") + (f.d ? " · " + prettyDate(parseKey(f.d)) : ""),
+    [["Remove", () => { toggleFav(f.t); renderSaved(); renderFav(); }]])));
+
+  // The last 30 days: what was on screen if we saw it, otherwise that day's message in your style.
+  const seen = readJSON(SEEN_KEY, {});
+  const d = new Date();
+  for (let i = 1; i <= 30; i++) {
+    d.setDate(d.getDate() - 1);
+    const key = dateKey(d);
+    const rec = seen[key] || { t: messages[cat][dayNumber(d) % messages[cat].length], s: cat };
+    archWrap.appendChild(savedItem(rec.t, prettyDate(parseKey(key)) + " · " + (STYLE_NAMES[rec.s] || ""), [
+      [isFav(rec.t) ? "♥ Saved" : "♡ Save", () => { toggleFav(rec.t, rec.s, key); renderSaved(); }]
+    ]));
+  }
+}
+
+/* ---------- Faith series (Advent, Lent, Ramadan) ---------- */
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function daysBetween(a, b) { return dayNumber(b) - dayNumber(a); }
+// Western Easter Sunday (Anonymous Gregorian computus).
+function easter(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451), month = Math.floor((h + l - 7 * m + 114) / 31);
+  return new Date(y, month - 1, ((h + l - 7 * m + 114) % 31) + 1);
+}
+
+// Today's entry from whichever series is in season, or null.
+function seriesToday(now = new Date()) {
+  if (!SERIES || !SERIES.series) return null;
+  const pref = store.get("amivo_series", "auto");
+  if (pref === "off") return null;
+  const wants = name => {
+    const styles = (SERIES.series[name] && SERIES.series[name].styles) || [];
+    if (pref === "all") return true;
+    if (pref === "auto") return styles.includes(cat);
+    return styles.includes(pref);
+  };
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const y = today.getFullYear();
+
+  // Advent: from the fourth Sunday before Christmas to Christmas Day, read from the end of the list.
+  if (wants("advent")) {
+    const christmas = new Date(y, 11, 25);
+    const start = addDays(christmas, -(christmas.getDay() || 7) - 21);
+    if (today >= start && today <= christmas) {
+      const days = SERIES.series.advent.days;
+      const i = Math.max(0, days.length - 1 - daysBetween(today, christmas));
+      return { name: "Advent", day: daysBetween(start, today) + 1, entry: days[i] };
+    }
+  }
+  // Lent: Ash Wednesday to Easter. Weekdays count the 40 days; Sundays have their own list.
+  if (wants("lent")) {
+    const e = easter(y), ash = addDays(e, -46);
+    if (today >= ash && today <= e) {
+      const s = SERIES.series.lent;
+      const elapsed = daysBetween(ash, today);
+      const sundays = Math.floor((elapsed + 3) / 7); // Ash Wednesday is 4 days before the first Sunday
+      if (today.getDay() === 0) return { name: "Lent", day: sundays, sunday: true, easter: elapsed === 46, entry: s.sundays[Math.min(sundays - 1, s.sundays.length - 1)] };
+      const day = elapsed - sundays + 1;
+      return { name: "Lent", day, entry: s.days[Math.min(day - 1, s.days.length - 1)] };
+    }
+  }
+  // Ramadan: 30 days from the expected start (moon sighting can shift it by a day).
+  if (wants("ramadan")) {
+    for (const k of SERIES.ramadanStarts || []) {
+      const start = parseKey(k), n = daysBetween(start, today);
+      if (n >= 0 && n < 30) {
+        const days = SERIES.series.ramadan.days;
+        return { name: "Ramadan", day: n + 1, entry: days[Math.min(n, days.length - 1)] };
+      }
+    }
+  }
+  return null;
+}
+
+function renderSeries() {
+  const s = isPremium() ? seriesToday() : null;
+  $("seriesCard").hidden = !s;
+  if (!s) return;
+  $("seriesLabel").textContent = s.name === "Lent" && s.sunday
+    ? (s.easter ? "Easter Sunday" : `Lent · Sunday ${s.day}`)
+    : `${s.name} · Day ${s.day}`;
+  $("seriesText").textContent = s.entry.text;
+  $("seriesQuote").textContent = `“${s.entry.quote}”`;
+  $("seriesRef").textContent = s.entry.ref;
 }
 
 function renderStreak() {
@@ -804,7 +1170,7 @@ function loadToday() {
   $("gratitude").value = (entry && entry.gratitude) || "";
   $("reflection").value = (entry && entry.reflection) || "";
   $("journalDate").textContent = prettyDate(new Date());
-  $("reflectionLabel").textContent = eveningPrompts[dayNumber() % eveningPrompts.length];
+  $("reflectionLabel").textContent = eveningQuestion();
   $("saveStatus").textContent = entry ? "You've already reflected today. You can update it anytime." : "";
   renderFeelings();
 }
@@ -813,12 +1179,14 @@ $("save").onclick = () => {
   const gratitude = $("gratitude").value.trim();
   const reflection = $("reflection").value.trim();
   const ok = store.set(ENTRY_PREFIX + currentKey, JSON.stringify({
-    feeling, gratitude, reflection, savedAt: new Date().toISOString()
+    feeling, gratitude, reflection, savedAt: new Date().toISOString(),
+    message: $("message").textContent.trim(), prompt: $("reflectionLabel").textContent
   }));
   $("saveStatus").textContent = ok
     ? "Today's reflection is saved on this device."
     : "Couldn't save. Your browser may be blocking storage.";
   renderHistory();
+  renderRecap();
   renderHome();
 };
 
@@ -842,6 +1210,10 @@ function renderHistory() {
     .reverse();
 
   wrap.innerHTML = "";
+  // Free plan shows the last 7 days; older entries stay on the device for Premium.
+  const weekAgo = dateKey(addDays(new Date(), -7));
+  const hiddenCount = isPremium() ? 0 : keys.filter(k => k < weekAgo).length;
+  if (hiddenCount) keys.splice(keys.length - hiddenCount, hiddenCount);
   if (!keys.length) {
     const p = document.createElement("p");
     p.className = "empty";
@@ -871,8 +1243,9 @@ function renderHistory() {
       p.append(b, document.createTextNode(text));
       body.appendChild(p);
     };
+    addLine("Morning message:", e.message);
     addLine("Grateful for:", e.gratitude);
-    addLine("Reflection:", e.reflection);
+    addLine(e.prompt ? e.prompt : "Reflection:", e.reflection);
     if (!e.gratitude && !e.reflection) addLine("Feeling:", e.feeling || "—");
 
     const del = document.createElement("button");
@@ -891,6 +1264,54 @@ function renderHistory() {
     details.append(summary, body);
     wrap.appendChild(details);
   });
+  if (hiddenCount) {
+    wrap.appendChild(lockedCard(`${hiddenCount} older ${hiddenCount === 1 ? "reflection is" : "reflections are"} safe on this device. Premium shows your full history.`));
+  }
+}
+
+// Premium: a gentle look back at the last 7 days.
+function renderRecap() {
+  const wrap = $("recap");
+  wrap.innerHTML = "";
+  if (!isPremium()) {
+    wrap.appendChild(lockedCard("See your week at a glance: how you've felt and what you were grateful for."));
+    return;
+  }
+  const entries = [];
+  for (let i = 0; i < 7; i++) {
+    const key = dateKey(addDays(new Date(), -i));
+    const e = readEntry(key);
+    if (e) entries.push(Object.assign({ key }, e));
+  }
+  const box = document.createElement("div");
+  box.className = "recap";
+  if (!entries.length) {
+    box.textContent = "Reflect on a few days this week and your recap will appear here.";
+    wrap.appendChild(box);
+    return;
+  }
+  const tally = {};
+  entries.forEach(e => { if (e.feeling) tally[e.feeling] = (tally[e.feeling] || 0) + 1; });
+  const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+  const head = document.createElement("div");
+  head.innerHTML = `You reflected on <b>${entries.length} of the last 7 days</b>.`;
+  box.appendChild(head);
+  if (top) {
+    const mood = document.createElement("div");
+    mood.textContent = `You felt ${top[0].toLowerCase()} most often` +
+      (Object.keys(tally).length > 1 ? ` (${Object.entries(tally).map(([f, n]) => f.toLowerCase() + " " + n).join(", ")}).` : ".");
+    box.appendChild(mood);
+  }
+  const grateful = entries.filter(e => e.gratitude).slice(0, 5);
+  if (grateful.length) {
+    const label = document.createElement("div");
+    label.style.marginTop = "8px";
+    label.innerHTML = "<b>You were grateful for:</b>";
+    const ul = document.createElement("ul");
+    grateful.forEach(e => { const li = document.createElement("li"); li.textContent = e.gratitude; ul.appendChild(li); });
+    box.append(label, ul);
+  }
+  wrap.appendChild(box);
 }
 
 /* ---------- Settings (saved as you change them) ---------- */
@@ -901,14 +1322,26 @@ const prefs = {
   eveningTime: store.get("amivo_evening_time", "18:00")
 };
 
+// Free plan uses the standard times; Premium can pick its own.
+const DEFAULT_TIMES = { morning: "07:30", evening: "18:00" };
+// The phone apps can't sell Premium yet (that needs App Store / Google Play billing), so they keep custom times.
+const timesUnlocked = () => NATIVE || isPremium();
+function morningTime() { return timesUnlocked() ? prefs.morningTime : DEFAULT_TIMES.morning; }
+function eveningTime() { return timesUnlocked() ? prefs.eveningTime : DEFAULT_TIMES.evening; }
+
 function renderPrefs() {
   $("category").value = cat;
+  $("seriesPref").value = store.get("amivo_series", "auto");
+  $("seriesPref").disabled = !isPremium();
+  $("timesHint").innerHTML = timesUnlocked()
+    ? "Choose when amivo shows up on your phone. Times follow your phone's time zone."
+    : "The free plan sends your message at 7:30 am and your reflection at 6 pm. <b>Premium</b> lets you pick your own times.";
   $("morningOn").checked = prefs.morningOn;
-  $("morningTime").value = prefs.morningTime;
-  $("morningTime").disabled = !prefs.morningOn;
+  $("morningTime").value = morningTime();
+  $("morningTime").disabled = !prefs.morningOn || !timesUnlocked();
   $("eveningOn").checked = prefs.eveningOn;
-  $("eveningTime").value = prefs.eveningTime;
-  $("eveningTime").disabled = !prefs.eveningOn;
+  $("eveningTime").value = eveningTime();
+  $("eveningTime").disabled = !prefs.eveningOn || !timesUnlocked();
 }
 
 function savePrefs() {
@@ -925,6 +1358,12 @@ $("category").addEventListener("change", () => {
   renderHome();
   $("settingsStatus").textContent = "Message style saved.";
   syncSchedule();
+});
+
+$("seriesPref").addEventListener("change", () => {
+  store.set("amivo_series", $("seriesPref").value);
+  renderSeries();
+  $("settingsStatus").textContent = "Faith series saved.";
 });
 
 $("morningOn").addEventListener("change", e => { prefs.morningOn = e.target.checked; onScheduleChange(); });
@@ -950,6 +1389,7 @@ $("clearAll").onclick = async () => {
   if (LocalNotifications) await cancelNativeReminders().catch(() => {});
   await signOut();
   store.keys().filter(k => k.startsWith("amivo_")).forEach(k => store.remove(k));
+  journalUnlocked = false;
   cat = "general";
   Object.assign(prefs, { morningOn: true, morningTime: "07:30", eveningOn: true, eveningTime: "18:00" });
   renderPrefs();
@@ -1010,9 +1450,9 @@ function schedulePayload(sub) {
     action: "subscribe",
     subscription: sub.toJSON(),
     morning_enabled: prefs.morningOn,
-    morning_time: prefs.morningTime,
+    morning_time: morningTime(),
     evening_enabled: prefs.eveningOn,
-    evening_time: prefs.eveningTime,
+    evening_time: eveningTime(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     category: cat
   };
@@ -1035,8 +1475,8 @@ function niceTime(hhmm) {
 
 function describeSchedule() {
   const parts = [];
-  if (prefs.morningOn) parts.push("your morning message at " + niceTime(prefs.morningTime));
-  if (prefs.eveningOn) parts.push("your evening reflection at " + niceTime(prefs.eveningTime));
+  if (prefs.morningOn) parts.push("your morning message at " + niceTime(morningTime()));
+  if (prefs.eveningOn) parts.push("your evening reflection at " + niceTime(eveningTime()));
   if (!parts.length) return "Both notifications are switched off.";
   return "You'll get " + parts.join(" and ") + ".";
 }
@@ -1333,6 +1773,7 @@ $("codeForm").onsubmit = async e => {
   $("codeBtn").disabled = true;
   try {
     saveSession(await authFetch("verify", { type: "email", email: pendingEmail, token }));
+    refreshPremium();
     $("codeForm").hidden = true;
     $("signupForm").hidden = false;
     $("signupCode").value = "";
@@ -1361,6 +1802,7 @@ async function signOut() {
   }
   const token = session.access_token;
   saveSession(null);
+  setPremium(null);
   authFetch("logout", {}, token).catch(() => {});
 }
 
@@ -1369,10 +1811,351 @@ $("signOutBtn").onclick = async () => {
   $("accountStatus").textContent = "You're signed out. Notifications on this device are off.";
 };
 
+/* ---------- Premium (Stripe checkout through the billing function) ---------- */
+const PREMIUM_KEY = "amivo_premium";
+let premium = readJSON(PREMIUM_KEY, null);
+let billingReady = false;
+
+function isPremium() {
+  if (!session || !premium) return false;
+  if (premium.plan === "lifetime") return premium.status === "active";
+  if (!["active", "trialing"].includes(premium.status)) return false;
+  // The saved copy is a fallback for offline use; don't trust it long past its end date.
+  const end = premium.status === "trialing" ? premium.trial_end : premium.current_period_end;
+  return !end || new Date(end).getTime() + 3 * 86400000 > Date.now();
+}
+
+async function billing(body) {
+  const token = await accessToken();
+  const res = await fetch(CONFIG.BILLING_URL, {
+    method: "POST",
+    headers: Object.assign({ "Content-Type": "application/json" }, token ? { Authorization: "Bearer " + token } : {}),
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || "Billing error"), { status: res.status });
+  return data;
+}
+
+function setPremium(p) {
+  const was = isPremium();
+  premium = p;
+  if (p) store.set(PREMIUM_KEY, JSON.stringify(p)); else store.remove(PREMIUM_KEY);
+  applyPremium(was !== isPremium());
+}
+
+async function refreshPremium() {
+  if (!session || !CONFIG.BILLING_URL) { if (premium) setPremium(null); else applyPremium(false); return; }
+  try { setPremium((await billing({ action: "status" })).premium); }
+  catch (e) { if (e.status === 401) setPremium(null); /* offline: keep the saved copy */ }
+}
+
+async function checkBilling() {
+  if (!CONFIG.BILLING_URL) return;
+  try {
+    const res = await fetch(CONFIG.BILLING_URL);
+    billingReady = res.ok && !!(await res.json()).ready;
+  } catch (e) { billingReady = false; }
+  renderPremium();
+  document.querySelectorAll(".ad-slot").forEach(s => { delete s.dataset.filled; });
+  fillAds();
+}
+
+// Re-draws everything Premium touches. Pass changed=true when Premium switched on or off.
+function applyPremium(changed = true) {
+  document.body.classList.toggle("is-premium", isPremium());
+  renderPremium();
+  if (!changed) return;
+  renderPrefs();
+  renderHome();
+  renderPrivacy();
+  if ($("journal").classList.contains("active")) { renderLock(); renderHistory(); renderRecap(); }
+  if ($("saved").classList.contains("active")) renderSaved();
+  renderAds();
+  syncSchedule();
+}
+
+const PLAN_NAMES = { monthly: "Monthly", yearly: "Yearly", lifetime: "Lifetime" };
+function niceDate(iso) {
+  return new Date(iso).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+
+function renderPremium() {
+  const on = isPremium();
+  const box = $("premiumStatus");
+  $("premiumPlans").hidden = on;
+  box.hidden = !on;
+  document.querySelectorAll("button.plan").forEach(b => { b.disabled = !billingReady; });
+  $("trialHint").textContent = billingReady
+    ? (premium && premium.had_trial
+      ? "You've already had your free trial, so this starts right away. Cancel anytime in one tap."
+      : "We'll remind you before your trial ends, and you can cancel in one tap. You won't be charged if you cancel before the trial is over.")
+    : "Premium is almost ready. Plans open here very soon.";
+  if (!on) { renderTrialBanner(); return; }
+
+  box.innerHTML = "";
+  const line = document.createElement("div");
+  const p = premium;
+  if (p.plan === "lifetime") line.innerHTML = "<b>You have Premium for life.</b> Thank you for being a founding member.";
+  else if (p.status === "trialing" && p.cancel_at_period_end) line.innerHTML = `<b>Your free trial ends ${niceDate(p.trial_end)}.</b> It's cancelled, so you won't be charged.`;
+  else if (p.status === "trialing") line.innerHTML = `<b>Your free trial ends ${niceDate(p.trial_end)}.</b> After that it's ${p.plan === "yearly" ? "CAD $39.99 a year" : "CAD $4.99 a month"}. Cancel before then and you won't be charged.`;
+  else if (p.cancel_at_period_end) line.innerHTML = `<b>Premium ${PLAN_NAMES[p.plan] || ""}</b> is cancelled and stays on until ${niceDate(p.current_period_end)}.`;
+  else line.innerHTML = `<b>Premium ${PLAN_NAMES[p.plan] || ""}</b> renews ${p.current_period_end ? niceDate(p.current_period_end) : "automatically"}.`;
+  box.appendChild(line);
+
+  const row = document.createElement("div");
+  row.className = "row";
+  const btn = (label, cls, action) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = cls; b.textContent = label;
+    b.onclick = () => openPortal(action);
+    row.appendChild(b);
+  };
+  if (p.plan !== "lifetime" && !p.cancel_at_period_end) btn(p.status === "trialing" ? "Cancel trial" : "Cancel Premium", "btn secondary small", "cancel");
+  if (p.plan !== "lifetime" || p.status !== "active") btn("Manage billing", "btn quiet small", "portal");
+  if (row.children.length) box.appendChild(row);
+  renderTrialBanner();
+}
+
+// A reminder on the home screen in the last 3 days of a trial that will turn into a charge.
+function renderTrialBanner() {
+  const el = $("trialBanner");
+  const p = premium;
+  const show = isPremium() && p.status === "trialing" && !p.cancel_at_period_end && p.trial_end &&
+    new Date(p.trial_end).getTime() - Date.now() < 3 * 86400000 &&
+    store.get("amivo_trial_dismissed") !== dateKey();
+  el.hidden = !show;
+  if (!show) return;
+  el.innerHTML = "";
+  const t = document.createElement("div");
+  t.innerHTML = `<b>Your free trial ends ${niceDate(p.trial_end)}.</b> Not for you? Cancel now and you won't be charged.`;
+  const row = document.createElement("div");
+  row.className = "row";
+  const cancel = document.createElement("button");
+  cancel.type = "button"; cancel.className = "btn secondary small"; cancel.textContent = "Cancel trial";
+  cancel.onclick = () => openPortal("cancel");
+  const keep = document.createElement("button");
+  keep.type = "button"; keep.className = "btn quiet small"; keep.textContent = "Keep Premium";
+  keep.onclick = () => { store.set("amivo_trial_dismissed", dateKey()); renderTrialBanner(); };
+  row.append(cancel, keep);
+  el.append(t, row);
+}
+
+async function openPortal(action) {
+  $("premiumMsg").textContent = "Opening…";
+  try {
+    location.href = (await billing({ action })).url;
+  } catch (e) {
+    $("premiumMsg").textContent = "Couldn't open billing just now. Please try again in a moment.";
+  }
+}
+
+function offerPremium() {
+  show("settings");
+  $("premium").scrollIntoView({ behavior: "smooth" });
+}
+
+document.querySelectorAll("button.plan").forEach(b => b.onclick = async () => {
+  if (!session) {
+    $("premiumMsg").textContent = "Sign up with your email first. It's how we remember your Premium on every device.";
+    $("account").scrollIntoView({ behavior: "smooth" });
+    $("signupEmail").focus({ preventScroll: true });
+    return;
+  }
+  $("premiumMsg").textContent = "Opening secure checkout…";
+  document.querySelectorAll("button.plan").forEach(x => { x.disabled = true; });
+  try {
+    location.href = (await billing({ action: "checkout", plan: b.dataset.plan })).url;
+  } catch (e) {
+    $("premiumMsg").textContent = e.status === 409
+      ? "You already have Premium on this account."
+      : "Couldn't open checkout. Please try again in a moment.";
+    renderPremium();
+  }
+});
+
+/* ---------- Ads (free plan only, Google AdSense) ---------- */
+const adsConfigured = () => !!(CONFIG.ADSENSE_CLIENT && CONFIG.ADSENSE_SLOT);
+let adScriptAdded = false;
+
+function loadAdScript() {
+  if (adScriptAdded) return;
+  adScriptAdded = true;
+  const sc = document.createElement("script");
+  sc.async = true;
+  sc.crossOrigin = "anonymous";
+  sc.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" + encodeURIComponent(CONFIG.ADSENSE_CLIENT);
+  document.head.appendChild(sc);
+}
+
+// Fills the ad spaces on the screen that's showing (AdSense needs a visible space to size the ad).
+function fillAds() {
+  if (isPremium() || NATIVE) return;
+  const active = document.querySelector(".screen.active");
+  if (!active) return;
+  active.querySelectorAll(".ad-slot:not([data-filled])").forEach(slot => {
+    slot.innerHTML = "";
+    if (adsConfigured()) {
+      loadAdScript();
+      const label = document.createElement("span");
+      label.className = "ad-label"; label.textContent = "Advertisement";
+      const ins = document.createElement("ins");
+      ins.className = "adsbygoogle";
+      ins.style.display = "block";
+      ins.dataset.adClient = CONFIG.ADSENSE_CLIENT;
+      ins.dataset.adSlot = CONFIG.ADSENSE_SLOT;
+      ins.dataset.adFormat = "auto";
+      ins.dataset.fullWidthResponsive = "true";
+      slot.append(label, ins);
+      if (billingReady) {
+        const foot = document.createElement("div");
+        foot.className = "ad-foot";
+        const rm = document.createElement("button");
+        rm.type = "button"; rm.className = "link"; rm.textContent = "Remove ads";
+        rm.onclick = offerPremium;
+        foot.appendChild(rm);
+        slot.appendChild(foot);
+      }
+      slot.hidden = false;
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+    } else if (billingReady) {
+      // Until AdSense is approved, the space promotes Premium instead.
+      const house = document.createElement("div");
+      house.className = "house-ad";
+      house.innerHTML = "<b>Enjoy amivo without ads.</b> Premium is CAD $4.99 a month or $39.99 a year, with a 7-day free trial. ";
+      const go = document.createElement("button");
+      go.type = "button"; go.className = "link"; go.textContent = "See Premium";
+      go.onclick = offerPremium;
+      house.appendChild(go);
+      slot.appendChild(house);
+      slot.hidden = false;
+    } else {
+      slot.hidden = true;
+    }
+    slot.dataset.filled = "1";
+  });
+}
+
+function renderAds() {
+  document.querySelectorAll(".ad-slot").forEach(slot => {
+    if (isPremium()) { slot.hidden = true; slot.innerHTML = ""; delete slot.dataset.filled; }
+  });
+  fillAds();
+}
+
+/* ---------- Journal passcode and download (Premium) ---------- */
+const PIN_KEY = "amivo_pin";
+let journalUnlocked = false;
+
+async function hashPin(pin, salt) {
+  const data = new TextEncoder().encode(salt + ":" + pin);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
+}
+const pinSet = () => !!readJSON(PIN_KEY, null);
+
+// A passcode keeps working even if Premium ends, so nobody is surprised by an open journal.
+function renderLock() {
+  const locked = pinSet() && !journalUnlocked;
+  $("lockScreen").hidden = !locked;
+  $("journalBody").hidden = locked;
+  if (locked) { $("unlockPin").value = ""; $("unlockStatus").textContent = ""; }
+  renderPrivacy();
+}
+
+function renderPrivacy() {
+  const has = pinSet();
+  $("removePin").hidden = !has;
+  $("pinBtn").textContent = has ? "Change passcode" : "Set passcode";
+  ["newPin", "pinBtn", "exportTxt", "exportJson"].forEach(id => { $(id).disabled = !isPremium(); });
+}
+
+$("lockScreen").onsubmit = async e => {
+  e.preventDefault();
+  const saved = readJSON(PIN_KEY, null);
+  if (saved && await hashPin($("unlockPin").value, saved.salt) === saved.hash) {
+    journalUnlocked = true;
+    renderLock(); renderHistory(); renderRecap();
+  } else {
+    $("unlockStatus").textContent = "That passcode didn't match.";
+    $("unlockPin").value = "";
+  }
+};
+
+$("forgotPin").onclick = () => {
+  if (!confirm("Without the passcode, the only way in is to remove the lock and delete every reflection on this device. Do that now?")) return;
+  store.keys().filter(k => k.startsWith(ENTRY_PREFIX)).forEach(k => store.remove(k));
+  store.remove(PIN_KEY);
+  journalUnlocked = false;
+  loadToday(); renderLock(); renderHistory(); renderRecap(); renderHome();
+};
+
+$("pinForm").onsubmit = async e => {
+  e.preventDefault();
+  if (!isPremium()) return offerPremium();
+  const pin = $("newPin").value.trim();
+  if (!/^\d{4,8}$/.test(pin)) { $("privacyStatus").textContent = "Use 4 to 8 digits."; return; }
+  const salt = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, "0")).join("");
+  store.set(PIN_KEY, JSON.stringify({ salt, hash: await hashPin(pin, salt) }));
+  $("newPin").value = "";
+  journalUnlocked = false;
+  renderPrivacy();
+  $("privacyStatus").textContent = "Passcode set. Your journal will ask for it each time you open amivo.";
+};
+
+$("removePin").onclick = () => {
+  if (pinSet() && !journalUnlocked) {
+    $("privacyStatus").textContent = "Open your journal with the passcode first, then you can remove it.";
+    return;
+  }
+  store.remove(PIN_KEY);
+  renderPrivacy();
+  $("privacyStatus").textContent = "Passcode removed.";
+};
+
+function allEntries() {
+  return store.keys().filter(k => k.startsWith(ENTRY_PREFIX)).map(k => k.slice(ENTRY_PREFIX.length)).sort()
+    .map(key => Object.assign({ date: key }, readEntry(key))).filter(e => e.savedAt || e.feeling);
+}
+
+function download(name, type, text) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+function exportJournal(kind) {
+  if (!isPremium()) return offerPremium();
+  if (pinSet() && !journalUnlocked) {
+    $("privacyStatus").textContent = "Open your journal with the passcode first, then download it.";
+    return;
+  }
+  const entries = allEntries();
+  if (!entries.length) { $("privacyStatus").textContent = "There are no reflections to download yet."; return; }
+  if (kind === "json") {
+    download(`amivo-journal-${dateKey()}.json`, "application/json", JSON.stringify({ app: "amivo", exported: new Date().toISOString(), entries }, null, 2));
+  } else {
+    const text = "amivo journal\n\n" + entries.map(e => [
+      prettyDate(parseKey(e.date), true),
+      e.feeling ? "Feeling: " + e.feeling : "",
+      e.message ? "Morning message: " + e.message : "",
+      e.gratitude ? "Grateful for: " + e.gratitude : "",
+      e.reflection ? (e.prompt || "Reflection") + "\n" + e.reflection : ""
+    ].filter(Boolean).join("\n")).join("\n\n----------\n\n") + "\n";
+    download(`amivo-journal-${dateKey()}.txt`, "text/plain", text);
+  }
+  $("privacyStatus").textContent = `Downloaded ${entries.length} ${entries.length === 1 ? "reflection" : "reflections"}.`;
+}
+$("exportTxt").onclick = () => exportJournal("txt");
+$("exportJson").onclick = () => exportJournal("json");
+
 /* ---------- Open straight to a screen from a notification (e.g. #journal) ---------- */
 function routeFromHash() {
   const id = location.hash.slice(1);
-  if (["home", "journal", "settings"].includes(id)) show(id);
+  if (["home", "journal", "settings", "saved"].includes(id)) show(id);
+  if (id === "premium") { show("settings"); $("premium").scrollIntoView(); }
 }
 window.addEventListener("hashchange", routeFromHash);
 // In the app, tapping a reminder opens the matching screen (the evening one opens the journal).
@@ -1405,14 +2188,33 @@ setInterval(refreshIfNeeded, 60000);
 
 /* ---------- Start ---------- */
 (async function init() {
-  await loadContent();
+  await Promise.all([loadContent(), loadSeries()]);
   if (!messages[cat]) cat = "general";
   renderPrefs();
   loadToday();
   renderHome();
   if (sessionFromLink()) show("settings"); else routeFromHash();
+  applyPremium();
   if (!NATIVE) await registerSW();
   renderAccount();
+  checkBilling();
+  // Back from Stripe: the payment can take a few seconds to reach us.
+  const back = new URLSearchParams(location.search).get("premium");
+  if (back) {
+    history.replaceState(null, "", location.pathname + location.hash);
+    if (back === "success") $("premiumMsg").textContent = "Thank you! Setting up your Premium…";
+    for (let i = 0; i < 6; i++) {
+      await refreshPremium();
+      if (back !== "success" || isPremium()) break;
+      await new Promise(r => setTimeout(r, 2500));
+    }
+    if (back === "success") $("premiumMsg").textContent = isPremium()
+      ? "Welcome to Premium. Ads are gone and everything is unlocked."
+      : "Your payment went through. Premium can take a minute to turn on; reopen amivo shortly.";
+    show("settings"); $("premium").scrollIntoView();
+  } else {
+    refreshPremium();
+  }
   // Keep the server's copy of the schedule current (time zone changes, travel, etc.)
   syncSchedule();
 })();

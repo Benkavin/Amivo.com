@@ -1,6 +1,6 @@
 /* amivo service worker: shows the morning and evening notifications and opens the app when one is tapped. */
-const CACHE = "amivo-v1";
-const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
+const CACHE = "amivo-v2";
+const SHELL = ["./", "index.html", "series.json", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting()));
