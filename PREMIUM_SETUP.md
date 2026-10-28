@@ -54,6 +54,9 @@ Test mode first: use `sk_test_` keys and the card `4242 4242 4242 4242`, then sw
    (`google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0`).
 4. Once approved, create a **Display ad** unit and put its id in `ADSENSE_SLOT: "..."`.
 5. In AdSense → Privacy & messaging, turn on the consent message for visitors from the EEA, UK and Switzerland.
-   AdSense also asks for a privacy policy page; the site should link one before applying.
+   AdSense also asks for a privacy policy; `privacy.html` already covers ads, cookies and how to opt out.
+
+The iPhone and Android apps show no ads and no Premium checkout (selling digital subscriptions in the apps needs
+App Store and Google Play billing, which is a later step); app users keep choosing their own notification times.
 
 Premium members never load the ad script. Until AdSense is set up, the ad spaces show a small "go ad-free" note instead.
