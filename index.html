@@ -84,6 +84,12 @@ html:not(.native) .native-only, html.native .web-only { display:none !important;
 .brand { font-size:32px;font-weight:650;letter-spacing:-2px; }
 .top { display:flex;align-items:center;justify-content:space-between; }
 .tag { font-size:11px;letter-spacing:1.7px;text-transform:uppercase;color:var(--soft); }
+.top-right { display:flex;flex-direction:column;align-items:flex-end;gap:8px; }
+.account-btn {
+  border:1px solid var(--ink);border-radius:50px;background:transparent;
+  color:var(--ink);font-weight:600;font-size:13px;padding:7px 14px;
+}
+.account-btn.signed-in { border-color:var(--line);color:var(--soft);font-weight:500; }
 .eyebrow {
   font-size:12px;text-transform:uppercase;letter-spacing:2px;
   color:var(--muted);margin-top:42px;
@@ -306,7 +312,10 @@ button.plan em {
 <main class="app">
 <header class="top">
   <div class="brand">amivo</div>
-  <div class="tag">a moment for you</div>
+  <div class="top-right">
+    <div class="tag">a moment for you</div>
+    <button type="button" class="account-btn web-only" id="accountBtn">Sign in</button>
+  </div>
 </header>
 
 <!-- HOME -->
@@ -449,11 +458,11 @@ button.plan em {
   <div class="section web-only" id="account">
     <h2>Your account</h2>
     <div id="signedOut">
-      <p class="hint">Sign up with your email to get daily notifications. No password needed.</p>
+      <p class="hint">New here or coming back? Enter your email and we'll send you a link or code to sign in. No password needed.</p>
       <form id="signupForm" novalidate>
         <input id="signupEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address" required>
         <div class="row">
-          <button type="submit" class="btn small" id="signupBtn">Sign up</button>
+          <button type="submit" class="btn small" id="signupBtn">Sign up or sign in</button>
         </div>
       </form>
       <form id="codeForm" hidden novalidate>
@@ -1735,8 +1744,17 @@ function renderAccount() {
   $("signedOut").hidden = !!session;
   $("signedIn").hidden = !session;
   if (session) $("accountEmail").textContent = session.email || "your email";
+  $("accountBtn").textContent = session ? "Account" : "Sign in";
+  $("accountBtn").classList.toggle("signed-in", !!session);
   renderNotify();
 }
+
+// The Sign in button at the top of every screen opens the account form in Settings.
+$("accountBtn").onclick = () => {
+  show("settings");
+  $("account").scrollIntoView({ block: "start" });
+  if (!session) $("signupEmail").focus({ preventScroll: true });
+};
 
 let pendingEmail = "";
 
