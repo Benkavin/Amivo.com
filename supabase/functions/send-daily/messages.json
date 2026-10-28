@@ -1,0 +1,175 @@
+{
+  "styles": {
+    "general": "Everyday encouragement",
+    "affirmation": "Positive affirmations",
+    "gratitude": "Gratitude",
+    "christian": "Christian encouragement",
+    "islamic": "Islamic encouragement",
+    "spiritual": "Spiritual reflection",
+    "stress": "Stress & anxiety",
+    "selflove": "Love yourself",
+    "positive": "Positive thinking",
+    "confidence": "Confidence",
+    "calm": "Rest & calm",
+    "motivation": "Motivation",
+    "hope": "Hope for hard days",
+    "health": "Health & body",
+    "work": "Work & study",
+    "relationships": "Friends & family"
+  },
+  "messages": {
+    "general": [
+      "Hard seasons end. Keep tending what matters while you wait.",
+      "You are always allowed to begin again.",
+      "You can trust yourself to figure things out.",
+      "You are not alone in feeling the way you feel.",
+      "You can keep going, even if it's slowly.",
+      "You are allowed to take up space, ask questions, and change your mind.",
+      "You don't need to rush to be worthy of rest."
+    ],
+    "affirmation": [
+      "I can make room for joy today.",
+      "I am open to receiving kindness.",
+      "I can take one deep breath and start this day on my own terms.",
+      "I am patient enough to let good things grow.",
+      "I can be both soft and strong.",
+      "I am resilient, and I recover from setbacks.",
+      "I can begin again whenever I need to."
+    ],
+    "gratitude": [
+      "Be grateful for today's chance to love and be loved.",
+      "Think of a lesson you're glad you learned, even the hard way.",
+      "Appreciate the patience of a good listener.",
+      "Think of a person who makes your life more colourful.",
+      "Appreciate the patience of the people who love you.",
+      "Think of someone who taught you something without knowing it.",
+      "Appreciate the people who answered your questions patiently."
+    ],
+    "christian": [
+      "Let your table be a place where everyone feels welcome.",
+      "You are covered by grace, from beginning to end.",
+      "Let your hands do good work and your heart rest in God.",
+      "You are being made more like Christ, little by little.",
+      "Let your hope be rooted in God, not in circumstances.",
+      "You are not too much and not too little for God's love.",
+      "Let your faith be humble, curious, and alive."
+    ],
+    "islamic": [
+      "With hardship comes ease. Hold on to that promise today.",
+      "May Allah grant you sincere companions who remind you of Him.",
+      "Let your worship bring calm, not pressure.",
+      "May Allah guide your tongue to kindness today.",
+      "Let your work today be honest, careful, and done with intention.",
+      "May Allah grant you ease, patience, and gratitude as you move through your day.",
+      "Let your trust in Allah be greater than your fears."
+    ],
+    "spiritual": [
+      "Breathe in calm. Breathe out what you no longer need.",
+      "Let your spirit be as wide and calm as an open sky.",
+      "May you meet challenges with a calm and open heart.",
+      "Let your mind be as open as the horizon.",
+      "May you walk gently on the earth today.",
+      "Let your heart be at home wherever you are.",
+      "May you meet yourself with kindness today."
+    ],
+    "stress": [
+      "Your body is trying to protect you. Thank it, then let your shoulders drop a little.",
+      "Breathe in for four, out for six. Do it three times before you decide anything.",
+      "You don't have to solve the whole day. Just the next ten minutes.",
+      "Anxious thoughts are loud, but they aren't always right.",
+      "Put one hand on your chest. You are here, and you are okay right now.",
+      "It's alright to step outside for a moment and let the air reset you.",
+      "Name five things you can see. Your mind is allowed to come back to the room."
+    ],
+    "selflove": [
+      "Speak to yourself today the way you'd speak to someone you love.",
+      "You are worthy of care, even on the days you don't feel like it.",
+      "Your body has carried you through everything. Thank it today.",
+      "You don't need to earn rest, kindness or love.",
+      "The way you treat yourself sets the tone for everything else.",
+      "Being imperfect doesn't make you less lovable.",
+      "Look in the mirror and find one thing you appreciate."
+    ],
+    "positive": [
+      "Look for one good thing today. It's there, even if it's small.",
+      "Something you're waiting for could be closer than it feels.",
+      "Every morning is a fresh page. Write something hopeful on it.",
+      "Good things can grow from slow beginnings.",
+      "Try asking 'what could go right?' today.",
+      "A small smile can change the mood of a whole room, including yours.",
+      "Your effort today is planting seeds you'll be glad of later."
+    ],
+    "confidence": [
+      "You've done hard things before. You can do this one too.",
+      "Speak up once today. Your ideas deserve to be heard.",
+      "Confidence grows from doing, not from waiting to feel ready.",
+      "You don't need to be the loudest to be strong.",
+      "Walk a little taller today. Notice how it changes how you feel.",
+      "Trust what you know. You've earned it.",
+      "Feeling unsure is normal. Go ahead anyway, gently."
+    ],
+    "calm": [
+      "Rest is part of the work, not a break from it.",
+      "Slow your breathing for one minute. Let the day soften around you.",
+      "You are allowed to do less today.",
+      "Let one task be done slowly and carefully.",
+      "Put your phone face down for a while. Notice the quiet.",
+      "Calm is not something you find. It's something you return to.",
+      "Light a candle, open a window, or make tea. Small rituals help."
+    ],
+    "motivation": [
+      "Start with five minutes. Momentum will do the rest.",
+      "Done is better than perfect. Make progress today.",
+      "Your future is built by what you do today, not someday.",
+      "Pick the one task that matters most, and begin there.",
+      "You don't need to feel motivated to take the first step.",
+      "Small daily effort beats big occasional bursts.",
+      "Remember why you started. Let that pull you forward."
+    ],
+    "hope": [
+      "This is a hard chapter, not the whole story.",
+      "Even the longest night ends in morning.",
+      "You don't have to feel hopeful to keep going. Keep going anyway.",
+      "Getting through today is enough.",
+      "Hard days don't erase the good ones still ahead.",
+      "You are not alone, even if it feels that way right now.",
+      "Reach out to one person today. Let them help carry a little."
+    ],
+    "health": [
+      "Drink a glass of water now. Your body will thank you.",
+      "A short walk counts. Movement doesn't have to be a workout.",
+      "Listen to your body today. It's telling you what it needs.",
+      "Eat something that makes you feel good, slowly and with care.",
+      "Stretch for one minute. Notice where you're holding tension.",
+      "Sleep is one of the kindest things you can do for yourself.",
+      "Step outside for some daylight, even for a few minutes."
+    ],
+    "work": [
+      "Start with the task you've been avoiding. It's rarely as big as it looks.",
+      "Your worth is not your productivity.",
+      "Take real breaks today. Your focus will thank you.",
+      "One focused hour can do more than a scattered day.",
+      "Ask for help when you're stuck. It's a smart move, not a weak one.",
+      "Learning feels slow until suddenly it doesn't. Keep going.",
+      "Finish one thing well today."
+    ],
+    "relationships": [
+      "Send a short message to someone you've been thinking of.",
+      "Listen to understand today, not just to reply.",
+      "Tell someone what you appreciate about them.",
+      "A kind word can change someone's whole day.",
+      "It's okay to need people. That's how we're made.",
+      "Make time for someone who makes you feel at home.",
+      "Give the people you love the benefit of the doubt today."
+    ]
+  },
+  "eveningPrompts": [
+    "What was the best part of your evening?",
+    "What did you eat today that you enjoyed?",
+    "What's one thing you're glad you didn't skip?",
+    "What did you appreciate about the evening quiet?",
+    "What's one habit you'd like to gently change?",
+    "What did you give today, and what did you receive?",
+    "What's one way you could be kinder to yourself tomorrow?"
+  ]
+}

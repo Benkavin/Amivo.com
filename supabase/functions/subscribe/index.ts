@@ -8,7 +8,11 @@ import { getVapidKeys } from "./keys.ts";
 // Sites allowed to call this function (your custom domain and the GitHub Pages address).
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ??
   "https://www.amivo.ca,https://amivo.ca,https://benkavin.github.io,https://bentamana.github.io").split(",").map((s) => s.trim());
-const CATEGORIES = ["general", "affirmation", "gratitude", "christian", "islamic", "spiritual"];
+const CATEGORIES = [
+  "general", "affirmation", "gratitude", "christian", "islamic", "spiritual",
+  "stress", "selflove", "positive", "confidence", "calm", "motivation", "hope", "health", "work", "relationships",
+  "buddhist", "hindu", "jewish", "sikh",
+];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function corsFor(req: Request): Record<string, string> {
@@ -26,6 +30,13 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 function validTimezone(tz: unknown): tz is string {
   if (typeof tz !== "string" || tz.length > 64) return false;
   try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return true; } catch { return false; }
+}
+
+// One category, or a mix sent as "stress,gratitude,general". Unknown names are dropped.
+function categoryMix(value: unknown): string {
+  const picked = typeof value === "string" ? value.split(",").map((s) => s.trim()) : [];
+  const mix = [...new Set(picked.filter((c) => CATEGORIES.includes(c)))];
+  return mix.length ? mix.join(",") : "general";
 }
 
 function validEndpoint(e: unknown): e is string {
@@ -81,7 +92,7 @@ Deno.serve(async (req) => {
     auth: keys.auth,
     user_id: userId,
     timezone: validTimezone(body.timezone) ? body.timezone : "UTC",
-    category: CATEGORIES.includes(body.category) ? body.category : "general",
+    category: categoryMix(body.category),
     morning_enabled: body.morning_enabled !== false,
     morning_time: body.morning_time,
     evening_enabled: body.evening_enabled !== false,
