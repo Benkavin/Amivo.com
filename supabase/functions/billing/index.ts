@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
         allow_promotion_codes: true,
         success_url: `${site}/?premium=success#premium`,
         cancel_url: `${site}/#premium`,
-        ...(row?.stripe_customer_id ? { customer: row.stripe_customer_id } : { customer_email: user.email }),
+        ...(row?.stripe_customer_id ? { customer: row.stripe_customer_id } : (user.email ? { customer_email: user.email } : {})),
       };
       const session = plan === "lifetime"
         ? await stripe.checkout.sessions.create({

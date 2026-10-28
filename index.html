@@ -458,19 +458,20 @@ button.plan em {
   <div class="section web-only" id="account">
     <h2>Your account</h2>
     <div id="signedOut">
-      <p class="hint">New here or coming back? Enter your email and we'll send you a link or code to sign in. No password needed.</p>
+      <p class="hint" id="signupHint"></p>
       <form id="signupForm" novalidate>
-        <input id="signupEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address" required>
+        <input id="signupEmail" required>
         <div class="row">
           <button type="submit" class="btn small" id="signupBtn">Sign up or sign in</button>
+          <button type="button" class="btn quiet small" id="signupSwitch"></button>
         </div>
       </form>
       <form id="codeForm" hidden novalidate>
-        <p class="hint">We sent an email to <b id="sentTo"></b>. Tap the link in it, or type the code from the email here.</p>
-        <input id="signupCode" type="text" autocomplete="one-time-code" inputmode="numeric" maxlength="10" placeholder="Code from the email" aria-label="Code from the email">
+        <p class="hint" id="sentHint"></p>
+        <input id="signupCode" type="text" autocomplete="one-time-code" inputmode="numeric" maxlength="10" aria-label="Sign-in code">
         <div class="row">
           <button type="submit" class="btn small" id="codeBtn">Confirm</button>
-          <button type="button" class="btn quiet small" id="codeBack">Use a different email</button>
+          <button type="button" class="btn quiet small" id="codeBack">Start over</button>
         </div>
       </form>
     </div>
@@ -547,7 +548,7 @@ button.plan em {
 
   <div class="section">
     <h2>Your data</h2>
-    <p class="hint">Your reflections live only on this device. If you sign up, your email and notification times are kept so we can send your messages. You can clear this device at any time.</p>
+    <p class="hint">Your reflections live only on this device. If you sign up, your phone number or email and your notification times are kept so we can send your messages. You can clear this device at any time.</p>
     <button type="button" class="btn quiet small" id="clearAll">Clear all amivo data</button>
     <p class="hint"><a href="privacy.html">Privacy policy</a></p>
   </div>
@@ -1677,7 +1678,7 @@ $("previewBtn").onclick = async () => {
   }
 };
 
-/* ---------- Account (Supabase Auth: email link or code, no password) ---------- */
+/* ---------- Account (Supabase Auth: a code by text or email, no password) ---------- */
 const SESSION_KEY = "amivo_session";
 let session = null;
 try { session = JSON.parse(store.get(SESSION_KEY, "null")); } catch (e) { session = null; }
@@ -1699,7 +1700,7 @@ function saveSession(s) {
     access_token: s.access_token,
     refresh_token: s.refresh_token,
     expires_at: s.expires_at || Math.floor(Date.now() / 1000) + Number(s.expires_in || 3600),
-    email: (s.user && s.user.email) || s.email || ""
+    email: (s.user && (s.user.email || (s.user.phone && "+" + s.user.phone.replace(/^\+/, "")))) || s.email || ""
   } : null;
   if (session) store.set(SESSION_KEY, JSON.stringify(session)); else store.remove(SESSION_KEY);
   renderAccount();
@@ -1743,7 +1744,7 @@ function sessionFromLink() {
 function renderAccount() {
   $("signedOut").hidden = !!session;
   $("signedIn").hidden = !session;
-  if (session) $("accountEmail").textContent = session.email || "your email";
+  if (session) $("accountEmail").textContent = session.email || "your account";
   $("accountBtn").textContent = session ? "Account" : "Sign in";
   $("accountBtn").classList.toggle("signed-in", !!session);
   renderNotify();
@@ -1756,29 +1757,79 @@ $("accountBtn").onclick = () => {
   if (!session) $("signupEmail").focus({ preventScroll: true });
 };
 
-let pendingEmail = "";
+// People sign in with a phone number (a code by text) or, if they prefer, an email (a link or code).
+let signupMode = "phone";
+let pending = null;
+
+function setSignupMode(mode) {
+  signupMode = mode;
+  const phone = mode === "phone";
+  const input = $("signupEmail");
+  input.value = "";
+  input.type = phone ? "tel" : "email";
+  input.inputMode = phone ? "tel" : "email";
+  input.autocomplete = phone ? "tel" : "email";
+  input.placeholder = phone ? "Phone number, e.g. 204 555 0123" : "you@example.com";
+  input.setAttribute("aria-label", phone ? "Phone number" : "Email address");
+  $("signupHint").textContent = phone
+    ? "New here or coming back? Enter your phone number and we'll text you a code to sign in. No password needed."
+    : "New here or coming back? Enter your email and we'll send you a link or code to sign in. No password needed.";
+  $("signupSwitch").textContent = phone ? "Use email instead" : "Use phone number instead";
+  $("accountStatus").textContent = "";
+}
+
+// Turns "204 555 0123" or "+1 (204) 555-0123" into +12045550123. Numbers without a country code are taken as Canada/US.
+function normalizePhone(raw) {
+  const digits = raw.replace(/[^\d]/g, "");
+  if (raw.trim().startsWith("+")) return digits.length >= 8 && digits.length <= 15 ? "+" + digits : null;
+  if (digits.length === 10) return "+1" + digits;
+  if (digits.length === 11 && digits[0] === "1") return "+" + digits;
+  return null;
+}
+
+$("signupSwitch").onclick = () => {
+  setSignupMode(signupMode === "phone" ? "email" : "phone");
+  $("signupEmail").focus();
+};
+setSignupMode("phone");
 
 $("signupForm").onsubmit = async e => {
   e.preventDefault();
-  const email = $("signupEmail").value.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    $("accountStatus").textContent = "Please enter a valid email address.";
-    return;
+  const raw = $("signupEmail").value.trim();
+  let body;
+  if (signupMode === "phone") {
+    const phone = normalizePhone(raw);
+    if (!phone) {
+      $("accountStatus").textContent = "Please enter a valid phone number. For numbers outside Canada and the US, start with + and the country code.";
+      return;
+    }
+    body = { phone, create_user: true, channel: "sms" };
+  } else {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+      $("accountStatus").textContent = "Please enter a valid email address.";
+      return;
+    }
+    body = { email: raw, create_user: true };
   }
   $("signupBtn").disabled = true;
   $("accountStatus").textContent = "Sending…";
   try {
-    await authFetch("otp?redirect_to=" + encodeURIComponent(location.origin + location.pathname),
-      { email, create_user: true });
-    pendingEmail = email;
-    $("sentTo").textContent = email;
+    await authFetch("otp?redirect_to=" + encodeURIComponent(location.origin + location.pathname), body);
+    pending = body.phone ? { type: "sms", phone: body.phone } : { type: "email", email: body.email };
+    $("sentHint").textContent = body.phone
+      ? "We texted a code to " + body.phone + ". Type it here."
+      : "We sent an email to " + body.email + ". Tap the link in it, or type the code from the email here.";
+    $("signupCode").placeholder = body.phone ? "Code from the text" : "Code from the email";
     $("signupForm").hidden = true;
     $("codeForm").hidden = false;
     $("accountStatus").textContent = "";
+    $("signupCode").focus();
   } catch (err) {
     $("accountStatus").textContent = err.status === 429
       ? "Too many tries. Please wait a minute and try again."
-      : "Couldn't send the email. Please try again in a moment.";
+      : body.phone
+        ? "Couldn't send the text. Check the number, or use email instead."
+        : "Couldn't send the email. Please try again in a moment.";
   } finally {
     $("signupBtn").disabled = false;
   }
@@ -1790,14 +1841,16 @@ $("codeForm").onsubmit = async e => {
   if (!token) return;
   $("codeBtn").disabled = true;
   try {
-    saveSession(await authFetch("verify", { type: "email", email: pendingEmail, token }));
+    saveSession(await authFetch("verify", Object.assign({ token }, pending)));
     refreshPremium();
     $("codeForm").hidden = true;
     $("signupForm").hidden = false;
     $("signupCode").value = "";
     $("accountStatus").textContent = "You're signed up. Now you can turn on notifications.";
   } catch (err) {
-    $("accountStatus").textContent = "That code didn't work. Check the email and try again.";
+    $("accountStatus").textContent = pending && pending.phone
+      ? "That code didn't work. Check the text and try again."
+      : "That code didn't work. Check the email and try again.";
   } finally {
     $("codeBtn").disabled = false;
   }
@@ -1975,7 +2028,7 @@ function offerPremium() {
 
 document.querySelectorAll("button.plan").forEach(b => b.onclick = async () => {
   if (!session) {
-    $("premiumMsg").textContent = "Sign up with your email first. It's how we remember your Premium on every device.";
+    $("premiumMsg").textContent = "Sign up first. It's how we remember your Premium on every device.";
     $("account").scrollIntoView({ behavior: "smooth" });
     $("signupEmail").focus({ preventScroll: true });
     return;
