@@ -41,29 +41,61 @@ python3 scripts/make-app-icons.py && npx @capacitor/assets generate --iconBackgr
    as an individual, your own name shows as the seller.
 2. **Google Play Console**: sign up at play.google.com/console ($25 USD once). New personal accounts must run a
    **closed test with at least 12 testers for 14 days** before Google lets you publish to everyone, so start this early.
-3. **A Mac with Xcode** to sign and upload the iOS build. No Mac? A cloud Mac service works too
-   (for example Codemagic, Ionic Appflow, or a rented Mac).
+3. **No Mac needed**: the Store release workflow builds and signs both apps on GitHub. You add a few secrets once (below).
 4. **Contact email**: make sure support@amivo.ca receives mail. It's the contact on the privacy policy and goes in both store listings.
 5. **Store listing**: short and full description, screenshots (iPhone 6.9" and Android phone), a 1024×500 Play
    feature graphic, category (Health & Fitness or Lifestyle), and the content rating and data safety questionnaires.
 
-## Releasing Android
+## Building the store versions (no Mac needed)
 
-1. In Android Studio: **Build → Generate Signed App Bundle**, create an upload key, and **keep the key file and
-   passwords somewhere safe** (losing them means you can't update the app).
-2. Upload the `.aab` to a closed test track in Play Console, add testers, then promote to production when allowed.
-3. Data safety form answers: no data collected or shared by the app (reflections stay on the phone; the app only
-   asks the server for the day's message).
-4. Bump `versionCode` and `versionName` in `android/app/build.gradle` for every new upload.
+The **Store release** workflow (Actions tab → Store release → Run workflow) builds both apps on GitHub's machines.
+Enter the version people will see (for example `1.0.0`); the build number goes up by itself on every run.
+It needs these repository secrets (Settings → Secrets and variables → Actions → New repository secret):
 
-## Releasing iOS
+| Secret | Where it comes from |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Your upload key file, base64-encoded (see below) |
+| `ANDROID_KEYSTORE_PASSWORD` | The keystore password you chose |
+| `ANDROID_KEY_ALIAS` | `upload` (the alias used below) |
+| `ANDROID_KEY_PASSWORD` | The key password you chose (keytool may use the keystore password for both) |
+| `APPLE_TEAM_ID` | developer.apple.com → Account → Membership details → Team ID |
+| `APPSTORE_API_KEY_ID` | App Store Connect → Users and Access → Integrations → App Store Connect API → your key's Key ID |
+| `APPSTORE_API_ISSUER_ID` | The Issuer ID shown above the keys on that same page |
+| `APPSTORE_API_PRIVATE_KEY` | The whole text of the `.p8` file you download when creating the key |
 
-1. In Xcode, open `ios/App/App.xcodeproj`, pick your team under **Signing & Capabilities**, and set the bundle id
-   to `ca.amivo.app` (register it in your developer account).
-2. **Product → Archive**, then **Distribute App → App Store Connect**.
-3. In App Store Connect: create the app, fill the listing, privacy nutrition label ("Data Not Collected"),
-   privacy policy URL `https://www.amivo.ca/privacy.html`, then submit for review.
-4. Bump the version and build number in Xcode for every new upload.
+### Android upload key (once)
+
+Open Google Cloud Shell (shell.cloud.google.com, free, in the browser) or any computer with Java, and run:
+
+```bash
+keytool -genkeypair -v -keystore amivo-upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 amivo-upload.jks > amivo-upload.b64   # paste this file's text into ANDROID_KEYSTORE_BASE64
+```
+
+Download `amivo-upload.jks` and keep it with its passwords somewhere safe (a password manager). Google re-signs the
+app with its own key (Play App Signing), so if the upload key is ever lost, Play support can reset it.
+
+### Releasing Android
+
+1. Play Console → **Create app**: name `amivo: Daily Encouragement`, app, free. Accept the declarations.
+2. Run **Store release** with platform `android`, then download the `.aab` from the run's Artifacts.
+3. Testing → **Closed testing** → create a track, add at least 12 testers (an email list), upload the `.aab`, and
+   roll it out. Keep it running 14 days, then apply for production access from the Dashboard.
+4. Meanwhile fill **Main store listing**, **App content** (privacy policy, ads: no, data safety, content rating,
+   target audience 13+) and **Store settings** using the store listings doc.
+
+### Releasing iOS
+
+1. developer.apple.com → Identifiers: make sure `ca.amivo.app` exists (the sign-in thread may already have added it
+   with Sign in with Apple; that's fine).
+2. App Store Connect → Users and Access → Integrations → **App Store Connect API** → generate a key with **Admin**
+   access (cloud signing needs it). Download the `.p8` (only possible once) and add the Apple secrets above.
+3. App Store Connect → Apps → **+ New App**: iOS, name `amivo: Daily Encouragement`, language English (Canada or U.S.),
+   bundle ID `ca.amivo.app`, SKU `amivo-ios`.
+4. Run **Store release** with platform `ios`. About 15 minutes after it finishes, the build appears in TestFlight.
+   Answer the export compliance question if asked (the app uses no non-exempt encryption).
+5. Fill the listing, privacy label ("Data Not Collected"), age rating and review notes from the store listings doc,
+   add screenshots, pick the build, then **Add for Review**.
 
 ## What the apps include (v1)
 
