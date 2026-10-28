@@ -43,7 +43,7 @@ python3 scripts/make-app-icons.py && npx @capacitor/assets generate --iconBackgr
    **closed test with at least 12 testers for 14 days** before Google lets you publish to everyone, so start this early.
 3. **A Mac with Xcode** to sign and upload the iOS build. No Mac? A cloud Mac service works too
    (for example Codemagic, Ionic Appflow, or a rented Mac).
-4. **Contact email**: replace `CONTACT_EMAIL` in `privacy.html` with a real address before this goes live.
+4. **Contact email**: make sure support@amivo.ca receives mail. It's the contact on the privacy policy and goes in both store listings.
 5. **Store listing**: short and full description, screenshots (iPhone 6.9" and Android phone), a 1024×500 Play
    feature graphic, category (Health & Fitness or Lifestyle), and the content rating and data safety questionnaires.
 
