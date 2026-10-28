@@ -639,7 +639,7 @@ button.plan em {
     <div class="row">
       <button type="button" class="btn quiet small" id="removePin" hidden>Remove passcode</button>
       <button type="button" class="btn secondary small" id="exportTxt">Download journal (.txt)</button>
-      <button type="button" class="btn quiet small" id="exportJson">Download (.json)</button>
+      <button type="button" class="btn secondary small" id="exportPdf">Download journal (.pdf)</button>
     </div>
     <p class="status" id="privacyStatus" aria-live="polite"></p>
   </div>
@@ -2602,7 +2602,7 @@ function renderPrivacy() {
   const has = pinSet();
   $("removePin").hidden = !has;
   $("pinBtn").textContent = has ? "Change passcode" : "Set passcode";
-  ["newPin", "pinBtn", "exportTxt", "exportJson"].forEach(id => { $(id).disabled = !isPremium(); });
+  ["newPin", "pinBtn", "exportTxt", "exportPdf"].forEach(id => { $(id).disabled = !isPremium(); });
 }
 
 $("lockScreen").onsubmit = async e => {
@@ -2653,9 +2653,9 @@ function allEntries() {
     .map(key => Object.assign({ date: key }, readEntry(key))).filter(e => e.savedAt || e.feeling);
 }
 
-function download(name, type, text) {
+function download(name, type, data) {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.href = URL.createObjectURL(new Blob([data], { type }));
   a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -2669,8 +2669,8 @@ function exportJournal(kind) {
   }
   const entries = allEntries();
   if (!entries.length) { $("privacyStatus").textContent = "There are no reflections to download yet."; return; }
-  if (kind === "json") {
-    download(`amivo-journal-${dateKey()}.json`, "application/json", JSON.stringify({ app: "amivo", exported: new Date().toISOString(), entries }, null, 2));
+  if (kind === "pdf") {
+    download(`amivo-journal-${dateKey()}.pdf`, "application/pdf", journalPdf(entries));
   } else {
     const text = "amivo journal\n\n" + entries.map(e => [
       prettyDate(parseKey(e.date), true),
@@ -2684,7 +2684,98 @@ function exportJournal(kind) {
   $("privacyStatus").textContent = `Downloaded ${entries.length} ${entries.length === 1 ? "reflection" : "reflections"}.`;
 }
 $("exportTxt").onclick = () => exportJournal("txt");
-$("exportJson").onclick = () => exportJournal("json");
+$("exportPdf").onclick = () => exportJournal("pdf");
+
+// The PDF is drawn page by page on a canvas (like the share image), so any language or emoji
+// prints as it looks on screen. Each page is a JPEG inside a small hand-written PDF.
+const PDF_W = 1240, PDF_H = 1754, PDF_PAD = 120; // A4 at 150 dpi
+function journalPages(entries) {
+  const pages = [];
+  let ctx, y;
+  const SANS = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  const newPage = () => {
+    const c = document.createElement("canvas");
+    c.width = PDF_W; c.height = PDF_H;
+    ctx = c.getContext("2d");
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, PDF_W, PDF_H);
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#8b967f"; ctx.font = `500 22px ${SANS}`;
+    ctx.fillText("amivo journal", PDF_PAD, PDF_H - 70);
+    const n = String(pages.length + 1);
+    ctx.fillText(n, PDF_W - PDF_PAD - ctx.measureText(n).width, PDF_H - 70);
+    pages.push(c);
+    y = PDF_PAD;
+  };
+  // Writes wrapped text, starting a new page whenever the next line won't fit.
+  const write = (text, font, color, lh, gapAfter = 0) => {
+    ctx.font = font;
+    for (const para of String(text).split(/\n/)) {
+      const lines = para.trim() ? wrapLines(ctx, para, PDF_W - PDF_PAD * 2) : [""];
+      for (const l of lines) {
+        if (y + lh > PDF_H - 130) { newPage(); ctx.font = font; }
+        y += lh;
+        ctx.fillStyle = color;
+        ctx.fillText(l, PDF_PAD, y);
+      }
+    }
+    y += gapAfter;
+  };
+
+  newPage();
+  write("amivo", `600 64px ${SANS}`, "#274b3e", 70, 6);
+  write("Your journal, saved " + prettyDate(new Date(), true), `400 26px ${SANS}`, "#6c7e72", 36, 20);
+  ctx.fillStyle = "#c8a56b"; ctx.fillRect(PDF_PAD, y, 90, 5); y += 40;
+
+  for (const e of entries) {
+    if (y > PDF_H - 400) newPage(); // keep a date heading with its first lines
+    write(prettyDate(parseKey(e.date), true), `normal 38px Georgia, 'Times New Roman', serif`, "#274b3e", 50, 10);
+    if (e.feeling) write("Feeling " + e.feeling.toLowerCase(), `500 24px ${SANS}`, "#56745d", 34, 10);
+    if (e.message) write(`“${e.message}”`, `italic 26px Georgia, 'Times New Roman', serif`, "#6c7e72", 38, 14);
+    if (e.gratitude) {
+      write("Grateful for", `600 22px ${SANS}`, "#8b967f", 32);
+      write(e.gratitude, `400 26px ${SANS}`, "#274b3e", 38, 14);
+    }
+    if (e.reflection) {
+      write(e.prompt || "Reflection", `600 22px ${SANS}`, "#8b967f", 32);
+      write(e.reflection, `400 26px ${SANS}`, "#274b3e", 38, 14);
+    }
+    y += 16;
+    if (y < PDF_H - 160) { ctx.fillStyle = "#e3e6dd"; ctx.fillRect(PDF_PAD, y, PDF_W - PDF_PAD * 2, 2); }
+    y += 40;
+  }
+  return pages;
+}
+
+function journalPdf(entries) {
+  const jpegs = journalPages(entries).map(c => {
+    const bin = atob(c.toDataURL("image/jpeg", 0.85).split(",")[1]);
+    return Uint8Array.from(bin, ch => ch.charCodeAt(0));
+  });
+  const enc = new TextEncoder(), parts = [], offsets = [];
+  let size = 0;
+  const add = x => { const b = typeof x === "string" ? enc.encode(x) : x; parts.push(b); size += b.length; };
+  const obj = (n, body) => { offsets[n] = size; add(`${n} 0 obj\n`); body(); add("\nendobj\n"); };
+  const W = 595.28, H = 841.89; // A4 in points
+  const kids = jpegs.map((_, i) => `${3 + i * 3} 0 R`).join(" ");
+  add("%PDF-1.4\n");
+  obj(1, () => add("<< /Type /Catalog /Pages 2 0 R >>"));
+  obj(2, () => add(`<< /Type /Pages /Kids [${kids}] /Count ${jpegs.length} >>`));
+  jpegs.forEach((jpg, i) => {
+    const page = 3 + i * 3, img = page + 1, content = page + 2;
+    const draw = `q ${W} 0 0 ${H} 0 0 cm /Im0 Do Q`;
+    obj(page, () => add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im0 ${img} 0 R >> >> /Contents ${content} 0 R >>`));
+    obj(img, () => { add(`<< /Type /XObject /Subtype /Image /Width ${PDF_W} /Height ${PDF_H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`); add(jpg); add("\nendstream"); });
+    obj(content, () => add(`<< /Length ${draw.length} >>\nstream\n${draw}\nendstream`));
+  });
+  const count = 3 + jpegs.length * 3, xref = size;
+  add(`xref\n0 ${count}\n0000000000 65535 f \n`);
+  for (let n = 1; n < count; n++) add(String(offsets[n]).padStart(10, "0") + " 00000 n \n");
+  add(`trailer\n<< /Size ${count} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const b of parts) { out.set(b, at); at += b.length; }
+  return out;
+}
 
 /* ---------- Open straight to a screen from a notification (e.g. #journal) ---------- */
 function routeFromHash() {
