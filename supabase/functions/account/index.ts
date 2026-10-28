@@ -12,7 +12,8 @@ const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ??
   "https://www.amivo.ca,https://amivo.ca,https://benkavin.github.io,https://bentamana.github.io").split(",").map((s) => s.trim());
 const SITE_URL = (Deno.env.get("SITE_URL") ?? "https://www.amivo.ca").replace(/\/$/, "");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+// The public key the website uses too (safe to share), in case the anon key isn't set.
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "sb_publishable_vMETCEvzLSi47fasv92olw_IxP8KLm9";
 const USERNAME_RE = /^[a-z0-9_.]{3,20}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESERVED = ["admin", "amivo", "support", "help", "root", "staff", "official"];
