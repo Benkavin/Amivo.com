@@ -8,7 +8,7 @@ import { getVapidKeys } from "./keys.ts";
 // Sites allowed to call this function (your custom domain and the GitHub Pages address).
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ??
   "https://www.amivo.ca,https://amivo.ca,https://benkavin.github.io,https://bentamana.github.io").split(",").map((s) => s.trim());
-const CATEGORIES = ["general", "affirmation", "gratitude", "christian", "islamic", "spiritual"];
+const CATEGORIES = ["general", "affirmation", "gratitude", "spiritual", "buddhist", "christian", "hindu", "islamic", "jewish", "sikh"];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function corsFor(req: Request): Record<string, string> {
