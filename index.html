@@ -2387,7 +2387,7 @@ async function refreshPremium() {
 }
 
 async function checkBilling() {
-  if (!CONFIG.BILLING_URL) return;
+  if (NATIVE || !CONFIG.BILLING_URL) return; // the apps don't sell Premium or show ads
   try {
     const res = await fetch(CONFIG.BILLING_URL);
     billingReady = res.ok && !!(await res.json()).ready;
