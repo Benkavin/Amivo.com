@@ -129,6 +129,8 @@ html:not(.native) .native-only, html.native .web-only { display:none !important;
 .btn.social[data-provider="apple"] { background:#000;border-color:#000;color:#fff; }
 .social-google { margin-top:10px;display:flex;justify-content:center;min-height:44px; }
 .hint.or { text-align:center;margin:16px 0 6px; }
+.link { background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;cursor:pointer;font-size:inherit; }
+.stack input + input { margin-top:10px; }
 .section { margin-top:36px; }
 .section h2 { font-size:18px;letter-spacing:-.3px;margin:0 0 10px; }
 .prompt {
@@ -468,6 +470,7 @@ button.plan em {
         <button type="button" class="btn secondary full social" data-provider="google" hidden><svg viewBox="0 0 48 48" width="16" height="16" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg> Continue with Google</button>
         <p class="hint or">or use your email</p>
       </div>
+      <div id="emailPanel">
       <p class="hint">New here or coming back? Enter your email and we'll send you a link or code to sign in. No password needed.</p>
       <form id="signupForm" novalidate>
         <input id="signupEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address" required>
@@ -483,10 +486,45 @@ button.plan em {
           <button type="button" class="btn quiet small" id="codeBack">Use a different email</button>
         </div>
       </form>
+      </div>
+      <div id="passwordPanel" hidden>
+        <form id="loginForm" class="stack" novalidate>
+          <input id="loginName" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Username or email" aria-label="Username or email">
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
+          <div class="row">
+            <button type="submit" class="btn small" id="loginBtn">Log in</button>
+            <button type="button" class="btn quiet small" id="forgotBtn">Forgot password?</button>
+          </div>
+          <p class="hint">New here? <button type="button" class="link" id="showCreate">Create an account</button></p>
+        </form>
+        <form id="createForm" class="stack" hidden novalidate>
+          <input id="createEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address">
+          <input id="createName" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="Username" aria-label="Username">
+          <input id="createPassword" type="password" autocomplete="new-password" placeholder="Password (8 or more characters)" aria-label="Password">
+          <p class="hint">Usernames are 3 to 20 letters, numbers, dots or underscores.</p>
+          <div class="row">
+            <button type="submit" class="btn small" id="createBtn">Create account</button>
+          </div>
+          <p class="hint">Already have an account? <button type="button" class="link" id="showLogin">Log in</button></p>
+        </form>
+      </div>
+      <p class="hint or"><button type="button" class="link" id="modeToggle">Use a username and password instead</button></p>
     </div>
     <div id="signedIn" hidden>
       <p class="hint">Signed in as <b id="accountEmail"></b>.</p>
-      <button type="button" class="btn quiet small" id="signOutBtn">Sign out</button>
+      <div class="row">
+        <button type="button" class="btn quiet small" id="signOutBtn">Sign out</button>
+        <button type="button" class="btn quiet small" id="passwordBtn">Add a username and password</button>
+      </div>
+      <form id="passwordForm" class="stack" hidden novalidate>
+        <p class="hint" id="passwordFormHint">Add a username and password so you can also log in with them.</p>
+        <input id="claimName" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="Username" aria-label="Username">
+        <input id="newPassword" type="password" autocomplete="new-password" placeholder="New password (8 or more characters)" aria-label="New password">
+        <div class="row">
+          <button type="submit" class="btn small" id="passwordSave">Save</button>
+          <button type="button" class="btn quiet small" id="passwordCancel">Cancel</button>
+        </div>
+      </form>
     </div>
     <p class="status" id="accountStatus" aria-live="polite"></p>
   </div>
@@ -597,6 +635,7 @@ const CONFIG = {
   GOOGLE_CLIENT_ID: "683530036311-7pm7h5r8cnp31pmhppkj75bgi8mclhdi.apps.googleusercontent.com",
   // Premium checkout and status (Stripe keys live in Supabase, never in this page).
   BILLING_URL: "https://jeyotgsaoizqdnupsbcg.supabase.co/functions/v1/billing",
+  ACCOUNT_URL: "https://jeyotgsaoizqdnupsbcg.supabase.co/functions/v1/account",
   // Ads for the free plan: paste your AdSense publisher id ("ca-pub-...") and ad unit id once approved.
   ADSENSE_CLIENT: "",
   ADSENSE_SLOT: ""
@@ -1615,7 +1654,7 @@ $("notifyBtn").onclick = async () => {
   try {
     if (btn.dataset.state !== "on" && !session && !LocalNotifications) {
       setNotifyStatus("Sign up first, then turn on notifications.");
-      $("signupEmail").focus();
+      focusSignIn();
       return;
     }
     if (LocalNotifications) {
@@ -1711,7 +1750,9 @@ function saveSession(s) {
     access_token: s.access_token,
     refresh_token: s.refresh_token,
     expires_at: s.expires_at || Math.floor(Date.now() / 1000) + Number(s.expires_in || 3600),
-    email: (s.user && s.user.email) || s.email || ""
+    email: (s.user && s.user.email) || s.email || "",
+    // Kept across token refreshes; undefined means we haven't asked the server yet.
+    username: s.username !== undefined ? s.username : session ? session.username : undefined
   } : null;
   if (session) store.set(SESSION_KEY, JSON.stringify(session)); else store.remove(SESSION_KEY);
   renderAccount();
@@ -1741,7 +1782,12 @@ function sessionFromLink() {
     saveSession({ access_token: h.get("access_token"), refresh_token: h.get("refresh_token"),
       expires_at: Number(h.get("expires_at")) || 0, expires_in: h.get("expires_in"), email });
     history.replaceState(null, "", location.pathname + "#settings");
-    $("accountStatus").textContent = "You're signed up. Now you can turn on notifications.";
+    if (h.get("type") === "recovery") {
+      openPasswordForm(true);
+      $("accountStatus").textContent = "Choose a new password.";
+    } else {
+      $("accountStatus").textContent = "You're signed up. Now you can turn on notifications.";
+    }
     return true;
   }
   if (h.get("error_description")) {
@@ -1814,7 +1860,15 @@ if (!NATIVE) showSocialSignIn();
 function renderAccount() {
   $("signedOut").hidden = !!session;
   $("signedIn").hidden = !session;
-  if (session) $("accountEmail").textContent = session.email || "your email";
+  if (session) {
+    const email = session.email || "your email";
+    $("accountEmail").textContent = session.username ? session.username + " (" + email + ")" : email;
+    $("passwordBtn").textContent = session.username ? "Change password" : "Add a username and password";
+    $("claimName").hidden = !!session.username;
+    if (session.username === undefined) loadUsername();
+  } else {
+    $("passwordForm").hidden = true;
+  }
   $("accountBtn").textContent = session ? "Account" : "Sign in";
   $("accountBtn").classList.toggle("signed-in", !!session);
   renderNotify();
@@ -1824,8 +1878,13 @@ function renderAccount() {
 $("accountBtn").onclick = () => {
   show("settings");
   $("account").scrollIntoView({ block: "start" });
-  if (!session) $("signupEmail").focus({ preventScroll: true });
+  if (!session) focusSignIn();
 };
+
+function focusSignIn() {
+  ($("passwordPanel").hidden ? $("signupEmail") : $("createForm").hidden ? $("loginName") : $("createEmail"))
+    .focus({ preventScroll: true });
+}
 
 let pendingEmail = "";
 
@@ -1863,6 +1922,7 @@ $("codeForm").onsubmit = async e => {
   try {
     saveSession(await authFetch("verify", { type: "email", email: pendingEmail, token }));
     refreshPremium();
+    showEmailPanel(true);
     $("codeForm").hidden = true;
     $("signupForm").hidden = false;
     $("signupCode").value = "";
@@ -1878,6 +1938,171 @@ $("codeBack").onclick = () => {
   $("codeForm").hidden = true;
   $("signupForm").hidden = false;
   $("accountStatus").textContent = "";
+};
+
+/* ---------- Username and password (through the account function) ---------- */
+async function accountApi(body, auth) {
+  const token = auth ? await accessToken() : null;
+  const res = await fetch(CONFIG.ACCOUNT_URL, {
+    method: "POST",
+    headers: Object.assign({ "Content-Type": "application/json" }, token ? { Authorization: "Bearer " + token } : {}),
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || "Request failed"), { code: data.error, status: res.status });
+  return data;
+}
+
+const ACCOUNT_ERRORS = {
+  invalid_email: "Please enter a valid email address.",
+  invalid_username: "Usernames are 3 to 20 letters, numbers, dots or underscores.",
+  username_taken: "That username is taken. Please try another.",
+  email_taken: "That email already has an account. Log in, or use \"Forgot password?\". If you signed up with an email code, sign in that way and add a username from your account.",
+  weak_password: "Please use a password with 8 or more characters.",
+  invalid_credentials: "That username or password isn't right.",
+  email_not_confirmed: "Please confirm your email first. Check your inbox for the link or code.",
+  rate_limited: "Too many tries. Please wait a minute and try again."
+};
+const accountError = (err, fallback) => ACCOUNT_ERRORS[err.code] || fallback;
+const validUsername = u => /^[a-z0-9_.]{3,20}$/.test(u);
+
+let usernameLoading = false;
+async function loadUsername() {
+  if (usernameLoading || !CONFIG.ACCOUNT_URL) return;
+  usernameLoading = true;
+  try {
+    const { username } = await accountApi({ action: "me" }, true);
+    if (session) { session.username = username || null; store.set(SESSION_KEY, JSON.stringify(session)); renderAccount(); }
+  } catch (e) {} finally { usernameLoading = false; }
+}
+
+function showEmailPanel(email) {
+  $("emailPanel").hidden = !email;
+  $("passwordPanel").hidden = email;
+  $("modeToggle").textContent = email ? "Use a username and password instead" : "Use an email code instead";
+  $("accountStatus").textContent = "";
+}
+$("modeToggle").onclick = () => { showEmailPanel(!$("passwordPanel").hidden); focusSignIn(); };
+
+function showCreate(create) {
+  $("createForm").hidden = !create;
+  $("loginForm").hidden = create;
+  $("accountStatus").textContent = "";
+  focusSignIn();
+}
+$("showCreate").onclick = () => showCreate(true);
+$("showLogin").onclick = () => showCreate(false);
+
+$("loginForm").onsubmit = async e => {
+  e.preventDefault();
+  const login = $("loginName").value.trim(), password = $("loginPassword").value;
+  if (!login || !password) { $("accountStatus").textContent = "Enter your username or email and your password."; return; }
+  $("loginBtn").disabled = true;
+  $("accountStatus").textContent = "Logging in…";
+  try {
+    const r = await accountApi({ action: "login", login, password });
+    saveSession(Object.assign({}, r.session, { username: r.username || null }));
+    refreshPremium();
+    $("loginPassword").value = "";
+    $("accountStatus").textContent = "You're logged in. Now you can turn on notifications.";
+  } catch (err) {
+    $("accountStatus").textContent = accountError(err, "Couldn't log in. Please try again in a moment.");
+  } finally {
+    $("loginBtn").disabled = false;
+  }
+};
+
+$("forgotBtn").onclick = async () => {
+  const login = $("loginName").value.trim();
+  if (!login) { $("accountStatus").textContent = "Type your username or email above, then tap \"Forgot password?\" again."; $("loginName").focus(); return; }
+  $("forgotBtn").disabled = true;
+  try {
+    await accountApi({ action: "recover", login, redirect_to: location.origin + location.pathname });
+    $("accountStatus").textContent = "If that account exists, we've emailed a link to reset the password.";
+  } catch (err) {
+    $("accountStatus").textContent = accountError(err, "Couldn't send the email. Please try again in a moment.");
+  } finally {
+    $("forgotBtn").disabled = false;
+  }
+};
+
+$("createForm").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("createEmail").value.trim(), username = $("createName").value.trim().toLowerCase();
+  const password = $("createPassword").value;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $("accountStatus").textContent = ACCOUNT_ERRORS.invalid_email; return; }
+  if (!validUsername(username)) { $("accountStatus").textContent = ACCOUNT_ERRORS.invalid_username; return; }
+  if (password.length < 8) { $("accountStatus").textContent = ACCOUNT_ERRORS.weak_password; return; }
+  $("createBtn").disabled = true;
+  $("accountStatus").textContent = "Creating your account…";
+  try {
+    const r = await accountApi({ action: "signup", email, username, password, redirect_to: location.origin + location.pathname });
+    $("createPassword").value = "";
+    if (r.session) {
+      saveSession(Object.assign({}, r.session, { username }));
+      $("accountStatus").textContent = "You're signed up. Now you can turn on notifications.";
+    } else {
+      // Supabase emails a link and code to confirm the address; the code form finishes sign-up here.
+      pendingEmail = email;
+      $("sentTo").textContent = email;
+      showEmailPanel(true);
+      $("signupForm").hidden = true;
+      $("codeForm").hidden = false;
+      $("accountStatus").textContent = "Almost done. Confirm your email to finish signing up.";
+    }
+  } catch (err) {
+    $("accountStatus").textContent = accountError(err, "Couldn't create the account. Please try again in a moment.");
+  } finally {
+    $("createBtn").disabled = false;
+  }
+};
+
+// Signed in: add a username and password, or change the password (also used after a reset link).
+function openPasswordForm(reset) {
+  $("passwordForm").hidden = false;
+  $("passwordFormHint").textContent = reset ? "Choose a new password for your account."
+    : session && session.username ? "Choose a new password." : "Add a username and password so you can also log in with them.";
+  $("newPassword").value = "";
+  (session && !session.username && !reset ? $("claimName") : $("newPassword")).focus({ preventScroll: true });
+}
+$("passwordBtn").onclick = () => openPasswordForm(false);
+$("passwordCancel").onclick = () => { $("passwordForm").hidden = true; };
+
+$("passwordForm").onsubmit = async e => {
+  e.preventDefault();
+  const username = $("claimName").hidden ? "" : $("claimName").value.trim().toLowerCase();
+  const password = $("newPassword").value;
+  if (username && !validUsername(username)) { $("accountStatus").textContent = ACCOUNT_ERRORS.invalid_username; return; }
+  if (password.length < 8) { $("accountStatus").textContent = ACCOUNT_ERRORS.weak_password; return; }
+  $("passwordSave").disabled = true;
+  $("accountStatus").textContent = "Saving…";
+  try {
+    if (username) await accountApi({ action: "claim", username }, true);
+    const token = await accessToken();
+    const res = await fetch(CONFIG.SUPABASE_URL + "/auth/v1/user", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", apikey: CONFIG.SUPABASE_KEY, Authorization: "Bearer " + token },
+      body: JSON.stringify({ password })
+    });
+    if (username) { session.username = username; store.set(SESSION_KEY, JSON.stringify(session)); }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw Object.assign(new Error("password"), { code: data.error_code === "same_password" ? "same_password" : "password_failed" });
+    }
+    $("passwordForm").hidden = true;
+    $("newPassword").value = "";
+    renderAccount();
+    $("accountStatus").textContent = username
+      ? "Saved. You can now log in with " + username + " and your password."
+      : "Your new password is saved.";
+  } catch (err) {
+    renderAccount();
+    $("accountStatus").textContent = err.code === "same_password" ? "That's already your password. Please choose a different one."
+      : err.code === "password_failed" ? "Couldn't save the password. Please try a stronger one."
+      : accountError(err, "Couldn't save. Please try again in a moment.");
+  } finally {
+    $("passwordSave").disabled = false;
+  }
 };
 
 // Signing out also stops notifications on this device, since they belong to the account.
@@ -2048,7 +2273,7 @@ document.querySelectorAll("button.plan").forEach(b => b.onclick = async () => {
   if (!session) {
     $("premiumMsg").textContent = "Sign up with your email first. It's how we remember your Premium on every device.";
     $("account").scrollIntoView({ behavior: "smooth" });
-    $("signupEmail").focus({ preventScroll: true });
+    focusSignIn();
     return;
   }
   $("premiumMsg").textContent = "Opening secure checkout…";
