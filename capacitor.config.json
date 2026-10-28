@@ -1,0 +1,16 @@
+{
+  "appId": "ca.amivo.app",
+  "appName": "amivo",
+  "webDir": "www",
+  "backgroundColor": "#f8f6ef",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_amivo",
+      "iconColor": "#274b3e"
+    },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DEFAULT"
+    }
+  }
+}
