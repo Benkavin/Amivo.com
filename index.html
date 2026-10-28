@@ -1862,7 +1862,7 @@ function renderAccount() {
   $("signedIn").hidden = !session;
   if (session) {
     const email = session.email || "your email";
-    $("accountEmail").textContent = session.username ? session.username + " (" + email + ")" : email;
+    $("accountEmail").textContent = session.username || email;
     $("passwordBtn").textContent = session.username ? "Change password" : "Add a username and password";
     $("claimName").hidden = !!session.username;
     if (session.username === undefined) loadUsername();
