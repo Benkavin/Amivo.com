@@ -1,55 +1,128 @@
-"""Draws the amivo app icon at full size for the App Store and Google Play.
+"""Draws the amivo app icon (a sunrise over green hills) and writes every size the apps and website use.
 
-Writes assets/icon.png (1024px, square, no transparency: Apple adds the rounded corners),
-assets/icon-foreground.png and assets/icon-background.png (Android adaptive icon layers),
-and assets/splash.png. Run: python3 scripts/make-app-icons.py
+Writes assets/icon.png and the other files in assets/ (1024px, square, no transparency: Apple adds the
+rounded corners), then overwrites the existing launcher icons and splash screens in android/ and ios/,
+the website icons in icons/, and the Android notification icon. Run: python3 scripts/make-app-icons.py
 """
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+import glob
 import os
 
 CREAM = (248, 246, 239)
+SKY_LOW = (241, 217, 168)
+SUN = (224, 169, 90)
+HILL = (63, 122, 99)
 GREEN = (39, 75, 62)
-GOLD = (200, 165, 107)
-FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-OUT = os.path.join(os.path.dirname(__file__), "..", "assets")
+ROOT = os.path.join(os.path.dirname(__file__), "..")
+OUT = os.path.join(ROOT, "assets")
+SS = 4  # draw big, then shrink, for smooth edges
 
 
-def mark(size, scale=1.0, bg=CREAM):
-    """The lowercase "a" with the gold line under it, centred on a square canvas."""
-    im = Image.new("RGBA", (size, size), bg)
+def bezier(p0, p1, p2, p3, steps=64):
+    pts = []
+    for i in range(steps + 1):
+        t = i / steps
+        u = 1 - t
+        pts.append(tuple(u ** 3 * a + 3 * u * u * t * b + 3 * u * t * t * c + t ** 3 * d for a, b, c, d in zip(p0, p1, p2, p3)))
+    return pts
+
+
+def hill(d, k, start, c1, c2, mid, c3, c4, end, fill):
+    s = lambda p: (p[0] * k, p[1] * k)
+    pts = bezier(s(start), s(c1), s(c2), s(mid)) + bezier(s(mid), s(c3), s(c4), s(end))
+    d.polygon(pts + [(1024 * k, 1024 * k), (0, 1024 * k)], fill=fill)
+
+
+def scene(size):
+    """The full icon: a warm sky, the sun, and two hills. Coordinates are on a 1024 grid."""
+    big = size * SS
+    k = big / 1024
+    im = Image.new("RGB", (big, big))
     d = ImageDraw.Draw(im)
-    s = size * scale
-    font = ImageFont.truetype(FONT, int(s * 0.64))
-    cx = size / 2
-    # The glyph sits a little above centre so the gold line balances it.
-    l, t, r, b = d.textbbox((0, 0), "a", font=font)
-    w, h = r - l, b - t
-    top = size / 2 - h / 2 - s * 0.04
-    d.text((cx - w / 2 - l, top - t), "a", font=font, fill=GREEN)
-    line_y = top + h + s * 0.07
-    lw, lh = s * 0.16, s * 0.024
-    d.rounded_rectangle((cx - lw / 2, line_y, cx + lw / 2, line_y + lh), radius=lh / 2, fill=GOLD)
+    for y in range(big):
+        t = y / (big - 1)
+        d.line([(0, y), (big, y)], fill=tuple(round(a + (b - a) * t) for a, b in zip(CREAM, SKY_LOW)))
+    d.ellipse([(512 - 190) * k, (600 - 190) * k, (512 + 190) * k, (600 + 190) * k], fill=SUN)
+    hill(d, k, (0, 640), (220, 560), (380, 580), (512, 640), (650, 700), (820, 690), (1024, 610), HILL)
+    hill(d, k, (0, 760), (250, 690), (420, 720), (560, 780), (720, 845), (880, 820), (1024, 770), GREEN)
+    return im.resize((size, size), Image.LANCZOS)
+
+
+def rounded(im, radius=0.225):
+    mask = Image.new("L", (im.width * SS, im.height * SS), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, mask.width - 1, mask.height - 1], radius=mask.width * radius, fill=255)
+    out = im.convert("RGBA")
+    out.putalpha(mask.resize(im.size, Image.LANCZOS))
+    return out
+
+
+def circle(im):
+    mask = Image.new("L", (im.width * SS, im.height * SS), 0)
+    ImageDraw.Draw(mask).ellipse([0, 0, mask.width - 1, mask.height - 1], fill=255)
+    out = im.convert("RGBA")
+    out.putalpha(mask.resize(im.size, Image.LANCZOS))
+    return out
+
+
+def splash(w, h):
+    """Cream screen with the icon as a rounded tile in the middle."""
+    im = Image.new("RGB", (w, h), CREAM)
+    tile = int(min(w, h) * 0.29)
+    if tile > 0:
+        icon = rounded(scene(tile))
+        im.paste(icon, ((w - tile) // 2, (h - tile) // 2), icon)
     return im
 
 
-os.makedirs(OUT, exist_ok=True)
-mark(1024).convert("RGB").save(os.path.join(OUT, "icon.png"))
-# Android crops adaptive icons to a circle or squircle, so the mark stays inside the middle 66%.
-mark(1024, scale=0.72, bg=(0, 0, 0, 0)).save(os.path.join(OUT, "icon-foreground.png"))
-Image.new("RGB", (1024, 1024), CREAM).save(os.path.join(OUT, "icon-background.png"))
-splash = Image.new("RGB", (2732, 2732), CREAM)
-splash.paste(mark(800).convert("RGB"), ((2732 - 800) // 2, (2732 - 800) // 2))
-splash.save(os.path.join(OUT, "splash.png"))
-print("Wrote icon, adaptive icon layers and splash to assets/")
+def size_of(path):
+    with Image.open(path) as im:
+        return im.size
 
-# Android notification icon: a white "a" on transparent, which Android tints with iconColor.
-RES = os.path.join(os.path.dirname(__file__), "..", "android", "app", "src", "main", "res")
+
+os.makedirs(OUT, exist_ok=True)
+icon = scene(1024)
+icon.save(os.path.join(OUT, "icon.png"))
+icon.save(os.path.join(OUT, "icon-background.png"))
+Image.new("RGBA", (1024, 1024), (0, 0, 0, 0)).save(os.path.join(OUT, "icon-foreground.png"))
+splash(2732, 2732).save(os.path.join(OUT, "splash.png"))
+
+# iOS: the 1024 App Store icon and the launch screen.
+IOS = os.path.join(ROOT, "ios", "App", "App", "Assets.xcassets")
+icon.save(os.path.join(IOS, "AppIcon.appiconset", "AppIcon-512@2x.png"))
+for path in glob.glob(os.path.join(IOS, "Splash.imageset", "*.png")):
+    splash(*size_of(path)).save(path)
+
+# Android: launcher icons (the adaptive icon is the whole scene as its background layer) and splash screens.
+RES = os.path.join(ROOT, "android", "app", "src", "main", "res")
+for path in glob.glob(os.path.join(RES, "mipmap-*", "*.png")):
+    w, _ = size_of(path)
+    name = os.path.basename(path)
+    if name == "ic_launcher_foreground.png":
+        Image.new("RGBA", (w, w), (0, 0, 0, 0)).save(path)
+    elif name == "ic_launcher_round.png":
+        circle(scene(w)).save(path)
+    else:
+        scene(w).save(path)
+for path in glob.glob(os.path.join(RES, "drawable*", "splash.png")):
+    splash(*size_of(path)).save(path)
+
+# Website icons.
+ICONS = os.path.join(ROOT, "icons")
+scene(180).save(os.path.join(ICONS, "apple-touch-icon.png"))
+rounded(scene(192)).save(os.path.join(ICONS, "icon-192.png"))
+rounded(scene(512)).save(os.path.join(ICONS, "icon-512.png"))
+scene(512).save(os.path.join(ICONS, "icon-maskable-512.png"))
+print("Wrote the icon, splash screens and launcher icons for iOS, Android and the website")
+
+# Android notification icon: a white half sun over a hill on transparent, which Android tints with iconColor.
 for density, px in {"mdpi": 24, "hdpi": 36, "xhdpi": 48, "xxhdpi": 72, "xxxhdpi": 96}.items():
     big = Image.new("RGBA", (px * 8, px * 8), (0, 0, 0, 0))
     d = ImageDraw.Draw(big)
-    font = ImageFont.truetype(FONT, int(px * 8 * 0.95))
-    l, t, r, b = d.textbbox((0, 0), "a", font=font)
-    d.text(((px * 8 - (r - l)) / 2 - l, (px * 8 - (b - t)) / 2 - t), "a", font=font, fill=(255, 255, 255, 255))
+    k = px * 8 / 1024
+    white = (255, 255, 255, 255)
+    d.pieslice([232 * k, 300 * k, 792 * k, 860 * k], 180, 360, fill=white)
+    hill(d, k, (0, 660), (250, 600), (400, 620), (512, 660), (640, 700), (800, 700), (1024, 640), white)
+    d.rectangle([0, 900 * k, 1024 * k, 1024 * k], fill=(0, 0, 0, 0))
     folder = os.path.join(RES, "drawable-" + density)
     os.makedirs(folder, exist_ok=True)
     big.resize((px, px), Image.LANCZOS).save(os.path.join(folder, "ic_stat_amivo.png"))
