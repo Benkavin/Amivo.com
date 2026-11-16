@@ -12,7 +12,7 @@ Two posts a day for TikTok and Instagram: a **morning** post (about 7 AM Winnipe
 1. If that slot's folder already has a post.png, stop: it's done (no reply needed). Otherwise read `posts-log.md` so the message, theme and format don't repeat recent posts.
 2. Write an original message in amivo's voice: short, warm, plain words, no pressure, no clichés, no medical claims.
    Keep it simple and relatable: everyday moments people actually have (coffee, the commute, a tired Tuesday, dishes in the sink, a kind text, small wins). Nothing fancy, abstract or preachy. Example morning: "If all you did this morning was get out of bed, *that counts.*" Example evening: "What was one *good little moment* today?" with small "A warm coffee counts. So does a kind text."
-   Visual style (render.js v2): soft grain, sunrise with mist/hills by day, starry sky and moon at night, light serif type with words fading in. Keep text short (about 6 to 16 words) so the layout stays clean. render-v1.js is the old style, kept only for reference.
+   Visual style: render.js is the current approved style (v1). render-v2.js is a new calmer design waiting for Kavin's OK; do NOT use it until Kavin approves it, then it gets copied over render.js. Keep text short (about 6 to 16 words).
 3. Pick a format per the slot rules above (morning rotates so no format runs twice in a row):
    - `quote` + `"video":true` : light sunrise, big serif message, 8s animated MP4 (sun rises, text fades in). Best for TikTok/Reels.
    - `evening` : dark green, a gentle journal question (shows the evening side of amivo).
@@ -20,7 +20,7 @@ Two posts a day for TikTok and Instagram: a **morning** post (about 7 AM Winnipe
    - `quote` with `slides` (3 to 5) : a carousel / TikTok photo slideshow, e.g. "3 small ways to…". Use `counter` "1 / 4".
    Wrap 1 to 3 words in `*stars*` for the gold italic accent. Use curly apostrophes.
 4. Write `<slot folder>/spec.json`, run `node tools/render.js <slot folder>/spec.json <slot folder>` (needs network for Google Fonts, about 1 minute with video).
-5. Look at post.png and feed.jpg before sharing. render.js makes post.png (9:16), feed.jpg (1080×1350, 4:5, for the Instagram image post; feed-N.jpg for slides) and post.mp4 when "video":true. Give every single-image post "video":true so each slot has a Reel. Write `caption.txt`: hook line, 1 to 3 short lines, a soft question or "send this to someone", then
+5. Look at post.png and feed.jpg before sharing. render.js makes post.png (9:16) and post.mp4 when "video":true (v2 also makes feed.jpg 1080×1350; with v1 the auto-post pads post.png to 4:5). Give every single-image post "video":true so each slot has a Reel. Write `caption.txt`: hook line, 1 to 3 short lines, a soft question or "send this to someone", then
    "amivo sends a short, kind message every morning and a gentle question every evening. Try it free at amivo.ca (link in bio)." and 6 to 10 hashtags (mix broad + niche, always #amivo).
 6. Append a line to `posts-log.md`, then post the files and caption in the thread.
 
