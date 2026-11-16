@@ -12,7 +12,8 @@ const NATIVE_SCRIPTS = {
   "capacitor.js": "@capacitor/core/dist/capacitor.js",
   "local-notifications.js": "@capacitor/local-notifications/dist/plugin.js",
   "filesystem.js": "@capacitor/filesystem/dist/plugin.js",
-  "share.js": "@capacitor/share/dist/plugin.js"
+  "share.js": "@capacitor/share/dist/plugin.js",
+  "native-purchases.js": "@capgo/native-purchases/dist/plugin.js"
 };
 
 fs.rmSync(out, { recursive: true, force: true });

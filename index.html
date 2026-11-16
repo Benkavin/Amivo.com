@@ -286,6 +286,8 @@ button.plan em {
   background:var(--gold);color:#2b2414;border-radius:50px;padding:3px 9px;
 }
 .plan.best { border-color:var(--gold);border-width:2px; }
+.small-print { font-size:12px;margin-top:12px; }
+.small-print a { color:inherit; }
 .perks { margin:10px 0 0;padding-left:20px;font-size:14px;line-height:1.8;color:var(--soft); }
 .locked {
   margin-top:12px;padding:18px 20px;border-radius:18px;border:1px dashed var(--field-line);
@@ -627,6 +629,34 @@ button.plan em {
     <p class="status" id="premiumMsg" aria-live="polite"></p>
   </div>
 
+  <div class="section native-only" id="appPremium" hidden>
+    <h2>amivo Premium</h2>
+    <div class="notice" id="iapStatus" hidden></div>
+    <div id="iapPlans">
+      <p class="hint">The free app keeps your daily message, evening question and journal. Premium adds:</p>
+      <ul class="perks">
+        <li>Every category, including Positive thinking, Confidence and Rest &amp; calm</li>
+        <li>Favourites and every past message</li>
+        <li>Your own morning and evening times</li>
+        <li>Advent, Lent and Ramadan series with references</li>
+        <li>Evening questions that follow your morning message, and a weekly recap</li>
+        <li>Journal passcode, download, and your full history</li>
+      </ul>
+      <div class="plans">
+        <button type="button" class="btn plan best" data-iap="yearly"><em>Best value</em><strong>Yearly · <b class="iap-price">CAD $39.99</b> a year</strong><span class="iap-note">Save 33%.</span></button>
+        <button type="button" class="btn plan" data-iap="monthly"><strong>Monthly · <b class="iap-price">CAD $4.99</b> a month</strong><span class="iap-note">Cancel anytime.</span></button>
+        <button type="button" class="btn plan" data-iap="lifetime"><em>Launch deal</em><strong>Lifetime · <b class="iap-price">CAD $79.99</b> once</strong><span>Pay once, keep Premium for good. Not a subscription.</span></button>
+      </div>
+    </div>
+    <div class="row">
+      <button type="button" class="btn secondary small" id="iapRestore">Restore purchases</button>
+      <button type="button" class="btn quiet small" id="iapManage" hidden>Manage subscription</button>
+    </div>
+    <p class="status" id="iapLoadErr" hidden>Couldn't load the plans from the App Store just now. <button type="button" class="link" id="iapRetry">Try again</button></p>
+    <p class="status" id="iapMsg" aria-live="polite"></p>
+    <p class="hint small-print" id="iapTerms">Monthly and Yearly are auto-renewing subscriptions. Payment is charged to your Apple Account when you confirm. A subscription renews automatically at the same price unless you turn off auto-renew at least 24 hours before the end of the current period, and your account is charged for renewal within the 24 hours before it ends. If a free trial is offered, any unused part of it ends when you buy a subscription. You can manage or cancel anytime in your Apple Account settings. <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener">Terms of Use</a> · <a href="https://www.amivo.ca/privacy.html" target="_blank" rel="noopener">Privacy Policy</a></p>
+  </div>
+
   <div class="section" id="privacy">
     <h2>Journal privacy <span class="premium-tag">Premium</span></h2>
     <p class="hint" id="pinHint">Add a passcode so the journal stays closed when someone else picks up your phone. It hides your reflections; it doesn't encrypt them.</p>
@@ -701,6 +731,10 @@ const NATIVE = !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.is
 const LocalNotifications = NATIVE && window.capacitorLocalNotifications ? capacitorLocalNotifications.LocalNotifications : null;
 const NativeShare = NATIVE && window.capacitorShare ? capacitorShare.Share : null;
 const NativeFiles = NATIVE && window.capacitorFilesystem ? capacitorFilesystem.Filesystem : null;
+const PLATFORM = NATIVE && Capacitor.getPlatform ? Capacitor.getPlatform() : "web";
+// Premium in the iPhone app is sold with Apple in-app purchase. Android keeps every feature open until Google Play billing is added.
+const NativePurchases = PLATFORM === "ios" && window.capacitorNativePurchases ? capacitorNativePurchases.NativePurchases : null;
+const IAP = PLATFORM === "ios";
 if (NATIVE) document.documentElement.classList.add("native");
 
 /* ---------- Content (loaded from messages.json, shared with the notification sender) ---------- */
@@ -809,8 +843,8 @@ const CATEGORY_ICONS = {
 const LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const DEFAULT_ICON = '<circle cx="24" cy="24" r="12"/><path d="M24 16v16M16 24h16"/>';
 
-// Locked categories: Premium on the web; the phone apps can't sell Premium yet, so everything is open there.
-function canUseCategory(key) { return !PREMIUM_CATEGORIES.includes(key) || NATIVE || isPremium(); }
+// Locked categories are Premium (bought on the web, or in the iPhone app; Android is open for now).
+function canUseCategory(key) { return !PREMIUM_CATEGORIES.includes(key) || isPremium(); }
 // The categories someone picked, as saved (one category is a mix of one).
 function savedMix() {
   let m = null;
@@ -978,7 +1012,7 @@ function renderFav() {
 $("favBtn").onclick = () => {
   if (!isPremium()) {
     setShareStatus("Saving favourites is part of Premium.");
-    return NATIVE ? undefined : offerPremium();
+    return offerPremium();
   }
   const added = toggleFav($("message").textContent.trim(), cat, dateKey());
   renderFav();
@@ -989,7 +1023,7 @@ function lockedCard(text) {
   const box = document.createElement("div");
   box.className = "locked";
   box.textContent = text + " ";
-  if (NATIVE) { box.textContent += "It's part of amivo Premium."; return box; }
+  if (NATIVE && !IAP) { box.textContent += "It's part of amivo Premium."; return box; }
   const btn = document.createElement("button");
   btn.type = "button"; btn.className = "btn small"; btn.textContent = "See Premium";
   btn.onclick = offerPremium;
@@ -1502,8 +1536,7 @@ const prefs = {
 
 // Free plan uses the standard times; Premium can pick its own.
 const DEFAULT_TIMES = { morning: "07:30", evening: "18:00" };
-// The phone apps can't sell Premium yet (that needs App Store / Google Play billing), so they keep custom times.
-const timesUnlocked = () => NATIVE || isPremium();
+const timesUnlocked = () => isPremium();
 function morningTime() { return timesUnlocked() ? prefs.morningTime : DEFAULT_TIMES.morning; }
 function eveningTime() { return timesUnlocked() ? prefs.eveningTime : DEFAULT_TIMES.evening; }
 
@@ -1587,7 +1620,7 @@ function renderCategories() {
     shown += visible.length;
   }
   $("catEmpty").hidden = shown > 0;
-  $("unlockAll").hidden = NATIVE || isPremium();
+  $("unlockAll").hidden = (NATIVE && !IAP) || isPremium();
   $("mixBtn").textContent = mixMode ? "Cancel mix" : "Make your own mix";
   $("mixBtn").setAttribute("aria-pressed", String(mixMode));
   $("mixBtn").classList.toggle("secondary", mixMode);
@@ -1604,6 +1637,7 @@ function renderCategories() {
 function pickCategory(key) {
   if (!canUseCategory(key)) {
     $("catStatus").textContent = `${STYLE_NAMES[key]} is part of amivo Premium.`;
+    if (IAP) offerPremium();
     return;
   }
   if (mixMode) {
@@ -2353,7 +2387,8 @@ let premium = readJSON(PREMIUM_KEY, null);
 let billingReady = false;
 
 function isPremium() {
-  // The phone apps can't sell Premium yet (that needs App Store / Google Play billing), so every feature is open there.
+  // iPhone app: Premium comes from an App Store purchase. Android can't sell Premium yet, so every feature is open there.
+  if (IAP) return iapActive();
   if (NATIVE) return true;
   if (!session || !premium) return false;
   if (premium.plan === "lifetime") return premium.status === "active";
@@ -2383,6 +2418,8 @@ function setPremium(p) {
 }
 
 async function refreshPremium() {
+  if (IAP) return refreshIAP();
+  if (NATIVE) return;
   if (!session || !CONFIG.BILLING_URL) { if (premium) setPremium(null); else applyPremium(false); return; }
   try { setPremium((await billing({ action: "status" })).premium); }
   catch (e) { if (e.status === 401) setPremium(null); /* offline: keep the saved copy */ }
@@ -2420,12 +2457,13 @@ function niceDate(iso) {
 }
 
 function renderPremium() {
-  if (NATIVE) return; // no plans or billing in the apps
+  if (IAP) return renderIAP();
+  if (NATIVE) return; // Android: no plans or billing yet
   const on = isPremium();
   const box = $("premiumStatus");
   $("premiumPlans").hidden = on;
   box.hidden = !on;
-  document.querySelectorAll("button.plan").forEach(b => { b.disabled = !billingReady; });
+  document.querySelectorAll("#premiumPlans button.plan").forEach(b => { b.disabled = !billingReady; });
   $("trialHint").textContent = billingReady
     ? (premium && premium.had_trial
       ? "You've already had your free trial, so this starts right away. Cancel anytime in one tap."
@@ -2491,11 +2529,12 @@ async function openPortal(action) {
 }
 
 function offerPremium() {
+  if (NATIVE && !IAP) return;
   show("settings");
-  $("premium").scrollIntoView({ behavior: "smooth" });
+  $(IAP ? "appPremium" : "premium").scrollIntoView({ behavior: "smooth" });
 }
 
-document.querySelectorAll("button.plan").forEach(b => b.onclick = async () => {
+document.querySelectorAll("#premiumPlans button.plan").forEach(b => b.onclick = async () => {
   if (!session) {
     $("premiumMsg").textContent = "Sign up with your email first. It's how we remember your Premium on every device.";
     $("account").scrollIntoView({ behavior: "smooth" });
@@ -2503,7 +2542,7 @@ document.querySelectorAll("button.plan").forEach(b => b.onclick = async () => {
     return;
   }
   $("premiumMsg").textContent = "Opening secure checkout…";
-  document.querySelectorAll("button.plan").forEach(x => { x.disabled = true; });
+  document.querySelectorAll("#premiumPlans button.plan").forEach(x => { x.disabled = true; });
   try {
     location.href = (await billing({ action: "checkout", plan: b.dataset.plan })).url;
   } catch (e) {
@@ -2513,6 +2552,169 @@ document.querySelectorAll("button.plan").forEach(b => b.onclick = async () => {
     renderPremium();
   }
 });
+
+/* ---------- Premium in the iPhone app (Apple in-app purchase, StoreKit 2) ---------- */
+// The product IDs must match App Store Connect exactly (see APP_STORE_IAP.md).
+// Monthly and Yearly are auto-renewing subscriptions in one group; Lifetime is a non-consumable.
+const IAP_PRODUCTS = {
+  monthly: { id: "ca.amivo.premium.monthly", type: "subs" },
+  yearly: { id: "ca.amivo.premium.yearly", type: "subs" },
+  lifetime: { id: "ca.amivo.premium.lifetime", type: "inapp" }
+};
+const IAP_KEY = "amivo_iap";
+const IAP_RANK = { lifetime: 3, yearly: 2, monthly: 1 };
+let iap = readJSON(IAP_KEY, null);   // { plan, expires, willCancel, trial }
+let iapProducts = {};                // plan -> StoreKit product
+let iapBusy = false;
+let iapStarted = false;
+let iapLoadFailed = false;
+
+const iapPlanFor = id => Object.keys(IAP_PRODUCTS).find(k => IAP_PRODUCTS[k].id === id);
+
+function iapActive() {
+  if (!iap) return false;
+  if (iap.plan === "lifetime") return true;
+  // The saved copy covers offline launches; StoreKit re-checks every time the app opens.
+  return !!iap.expires && new Date(iap.expires).getTime() + 86400000 > Date.now();
+}
+
+function setIAP(next) {
+  const was = isPremium();
+  iap = next;
+  if (next) store.set(IAP_KEY, JSON.stringify(next)); else store.remove(IAP_KEY);
+  applyPremium(was !== isPremium());
+}
+
+// Reads what this Apple Account currently owns. Transaction.currentEntitlements is
+// already verified by StoreKit and leaves out refunded and expired purchases.
+async function refreshIAP() {
+  if (!NativePurchases) { renderIAP(); return; }
+  try {
+    const { purchases } = await NativePurchases.getPurchases({ onlyCurrentEntitlements: true });
+    let best = null;
+    for (const t of purchases || []) {
+      const plan = iapPlanFor(t.productIdentifier);
+      if (!plan || t.revocationDate) continue;
+      if (plan !== "lifetime") {
+        if (t.isActive === false) continue;
+        if (t.expirationDate && new Date(t.expirationDate).getTime() < Date.now()) continue;
+      }
+      if (!best || IAP_RANK[plan] > IAP_RANK[best.plan]) {
+        best = { plan, expires: t.expirationDate || null, willCancel: !!t.willCancel, trial: !!t.isTrialPeriod };
+      }
+    }
+    setIAP(best);
+  } catch (e) {
+    renderIAP(); // offline or StoreKit busy: keep the saved copy
+  }
+}
+
+async function loadIAPProducts() {
+  if (!NativePurchases) return;
+  try {
+    const ids = Object.values(IAP_PRODUCTS).map(p => p.id);
+    const { products } = await NativePurchases.getProducts({ productIdentifiers: ids });
+    iapProducts = {};
+    for (const p of products || []) { const plan = iapPlanFor(p.identifier); if (plan) iapProducts[plan] = p; }
+  } catch (e) { iapProducts = {}; }
+  iapLoadFailed = !Object.keys(iapProducts).length;
+  renderIAP();
+}
+
+function trialText(p) {
+  const d = p && p.introductoryPrice;
+  // paymentMode 2 is a free trial. Only say so when this Apple Account can still get it.
+  if (!d || d.paymentMode !== 2 || p.introEligibility === 1) return "";
+  const per = d.subscriptionPeriod || {};
+  const n = (per.numberOfUnits || 1) * (d.numberOfPeriods || 1);
+  const unit = ["day", "week", "month", "year"][per.unit] || "day";
+  const days = unit === "week" ? n * 7 : null;
+  return days ? `${days}-day free trial` : `${n}-${unit} free trial`;
+}
+
+function renderIAP() {
+  const box = $("appPremium");
+  if (!box) return;
+  box.hidden = false;
+  const on = iapActive();
+  $("iapPlans").hidden = on;
+  $("iapManage").hidden = !(on && iap && iap.plan !== "lifetime");
+  const status = $("iapStatus");
+  status.hidden = !on;
+  if (on) {
+    if (iap.plan === "lifetime") status.innerHTML = "<b>You have Premium for life.</b> Thank you for being a founding member.";
+    else {
+      const name = PLAN_NAMES[iap.plan] || "";
+      const when = iap.expires ? niceDate(iap.expires) : "";
+      status.innerHTML = iap.willCancel
+        ? `<b>Premium ${name}</b> is cancelled and stays on until ${when}.`
+        : iap.trial
+          ? `<b>Your free trial</b> of Premium ${name} is on. It becomes paid on ${when} unless you cancel before then.`
+          : `<b>Premium ${name}</b> renews ${when ? "on " + when : "automatically"}.`;
+    }
+  }
+  const loaded = Object.keys(iapProducts).length > 0;
+  document.querySelectorAll("#iapPlans button[data-iap]").forEach(b => {
+    const p = iapProducts[b.dataset.iap];
+    b.disabled = iapBusy || !p;
+    if (p) b.querySelector(".iap-price").textContent = p.priceString;
+    const note = b.querySelector(".iap-note");
+    if (note && p) {
+      const trial = trialText(p);
+      const base = b.dataset.iap === "yearly" ? "Save 33%." : "Cancel anytime.";
+      note.textContent = trial ? `${trial}, then ${p.priceString} ${b.dataset.iap === "yearly" ? "a year" : "a month"}. ${base}` : base;
+    }
+  });
+  $("iapLoadErr").hidden = on || loaded || !iapLoadFailed;
+}
+
+const isUserCancel = e => /cancel/i.test((e && (e.message || e.code)) || "");
+
+document.querySelectorAll("#iapPlans button[data-iap]").forEach(b => b.onclick = async () => {
+  const plan = b.dataset.iap, product = IAP_PRODUCTS[plan];
+  if (!NativePurchases || !iapProducts[plan] || iapBusy) return;
+  iapBusy = true; renderIAP();
+  $("iapMsg").textContent = "Opening the App Store…";
+  try {
+    await NativePurchases.purchaseProduct({ productIdentifier: product.id, productType: product.type });
+    await refreshIAP();
+    $("iapMsg").textContent = iapActive()
+      ? "Welcome to Premium. Everything is unlocked."
+      : "Thank you! Your purchase is being confirmed by Apple. It turns on as soon as that's done.";
+  } catch (e) {
+    $("iapMsg").textContent = isUserCancel(e) ? "" : "The purchase didn't go through. You haven't been charged. Please try again.";
+  } finally {
+    iapBusy = false; renderIAP();
+  }
+});
+
+$("iapRestore").onclick = async () => {
+  if (!NativePurchases || iapBusy) return;
+  iapBusy = true; renderIAP();
+  $("iapMsg").textContent = "Checking your purchases…";
+  try {
+    await NativePurchases.restorePurchases();
+    await refreshIAP();
+    $("iapMsg").textContent = iapActive() ? "Premium restored. Everything is unlocked." : "We didn't find an amivo Premium purchase on this Apple Account.";
+  } catch (e) {
+    $("iapMsg").textContent = isUserCancel(e) ? "" : "Couldn't reach the App Store just now. Please try again.";
+  } finally {
+    iapBusy = false; renderIAP();
+  }
+};
+
+$("iapRetry").onclick = () => { iapLoadFailed = false; renderIAP(); loadIAPProducts(); };
+$("iapManage").onclick = () => { if (NativePurchases) NativePurchases.manageSubscriptions().catch(() => {}); };
+
+function startIAP() {
+  if (!IAP || iapStarted) return;
+  iapStarted = true;
+  if (!NativePurchases) { $("iapMsg").textContent = "In-app purchase isn't available on this device."; renderIAP(); return; }
+  // Renewals, refunds, Ask to Buy approvals and purchases made on another device arrive here.
+  NativePurchases.addListener("transactionUpdated", () => refreshIAP()).catch(() => {});
+  loadIAPProducts();
+  refreshIAP();
+}
 
 /* ---------- Ads (free plan only, Google AdSense) ---------- */
 const adsConfigured = () => !!(CONFIG.ADSENSE_CLIENT && CONFIG.ADSENSE_SLOT);
@@ -2833,6 +3035,7 @@ setInterval(refreshIfNeeded, 60000);
   renderHome();
   if (sessionFromLink()) show("settings"); else routeFromHash();
   applyPremium();
+  startIAP();
   if (!NATIVE) await registerSW();
   renderAccount();
   checkBilling();
