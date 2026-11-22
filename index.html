@@ -186,6 +186,7 @@ textarea { min-height:120px;resize:vertical;line-height:1.6; }
 .chips button {
   border:1px solid var(--line);border-radius:12px;
   background:var(--field);padding:11px 14px;color:var(--ink);
+  white-space:nowrap;
 }
 .chips button[aria-pressed="true"] {
   background:var(--tint);border-color:var(--accent);font-weight:700;
@@ -765,7 +766,10 @@ async function loadSeries() {
   } catch (e) { /* offline: no series today */ }
 }
 
-const FEELINGS = ["Peaceful", "Hopeful", "Okay", "Tired", "Overwhelmed"];
+const FEELINGS = [
+  "Amazing", "Happy", "Cheerful", "Loved", "Grateful", "Peaceful", "Hopeful",
+  "Okay", "Tired", "Anxious", "Sad", "Overwhelmed",
+];
 const DEFAULT_FEELING = "Okay";
 
 /* ---------- Helpers ---------- */
